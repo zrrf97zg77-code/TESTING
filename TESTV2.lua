@@ -1,6 +1,6 @@
 --// IVORY HUB
 --// Black & White UI with Integrated Aimbot & Features
---// Credits: lvory999 (Developer), rayo06996 (Ideas & Name)
+--// Credits: lvory999 (Developer), rayo06996 (Ideas)
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -23,7 +23,6 @@ local DARK = Color3.fromRGB(17,17,17)
 local LIGHT = Color3.fromRGB(30,30,30)
 local WHITE = Color3.fromRGB(245,245,245)
 local GRAY = Color3.fromRGB(145,145,145)
-local GREEN = Color3.fromRGB(0,180,0)
 
 --// GUI
 local Gui = Instance.new("ScreenGui")
@@ -190,18 +189,20 @@ local function CreateButton(Parent,Text,Color)
     return Button
 end
 
---// CREATE TOGGLE BUTTON (green when ON)
+--// CREATE TOGGLE BUTTON (no green, just black/white)
 local function CreateToggle(Parent, Text, Default, OnClick)
     local state = Default or false
-    local btn = CreateButton(Parent, Text .. (state and " ON" or " OFF"), state and GREEN or LIGHT)
-    
+    local btn = CreateButton(Parent, Text .. (state and " ON" or " OFF"), state and WHITE or LIGHT)
+    if state then btn.TextColor3 = BLACK end
+
     btn.MouseButton1Click:Connect(function()
         state = not state
         btn.Text = Text .. (state and " ON" or " OFF")
-        btn.BackgroundColor3 = state and GREEN or LIGHT
+        btn.BackgroundColor3 = state and WHITE or LIGHT
+        btn.TextColor3 = state and BLACK or WHITE
         if OnClick then OnClick(state) end
     end)
-    
+
     return btn
 end
 
@@ -345,7 +346,7 @@ end)
 --              FEATURES & AIMBOT INTEGRATION
 -- ==================================================================
 
---// Home Page - cleaned up (removed F5 hint and extra text)
+--// Home Page (clean)
 local HomeTitle = Instance.new("TextLabel")
 HomeTitle.Size = UDim2.new(1,0,0,40)
 HomeTitle.BackgroundTransparency = 1
@@ -365,23 +366,71 @@ HomeSub.TextSize = 11
 HomeSub.Font = Enum.Font.Gotham
 HomeSub.Parent = Home
 
--- (Removed the two info buttons as requested)
-
---// Main Page (features)
--- Fast Attack toggle
+--// Main Page (features with fixes)
+-- Fast Attack
 local fastAttack = false
+local fastAttackLoop = nil
 CreateToggle(MainPage, "FAST ATTACK", false, function(state)
     fastAttack = state
+    if state then
+        fastAttackLoop = RunService.Heartbeat:Connect(function()
+            if not fastAttack then
+                if fastAttackLoop then fastAttackLoop:Disconnect(); fastAttackLoop = nil end
+                return
+            end
+            -- Simulate fast M1: send a dummy RegisterAttack/RegisterHit
+            local char = player.Character
+            if char then
+                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                if remotes then
+                    local regAttack = remotes:FindFirstChild("RE/RegisterAttack")
+                    local regHit = remotes:FindFirstChild("RE/RegisterHit")
+                    if regAttack and regHit then
+                        -- Find nearest enemy or just send empty
+                        local targets = {}
+                        for _, p in pairs(Players:GetPlayers()) do
+                            if p ~= player and p.Character then
+                                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                                local head = p.Character:FindFirstChild("Head")
+                                if hum and hum.Health > 0 and head then
+                                    table.insert(targets, {p.Character, head})
+                                end
+                            end
+                        end
+                        if #targets > 0 then
+                            regAttack:FireServer(0)
+                            regHit:FireServer(targets[1][2], targets)
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if fastAttackLoop then fastAttackLoop:Disconnect(); fastAttackLoop = nil end
+    end
 end)
 
 -- Walk Speed toggle & slider
 local walkSpeed = false
 local walkSpeedVal = 16
-local wsToggle = CreateToggle(MainPage, "WALK SPEED", false, function(state)
+local wsLoop = nil
+CreateToggle(MainPage, "WALK SPEED", false, function(state)
     walkSpeed = state
-    if state and player.Character then
-        local hum = player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = walkSpeedVal end
+    if state then
+        if not wsLoop then
+            wsLoop = RunService.Heartbeat:Connect(function()
+                if not walkSpeed then
+                    if wsLoop then wsLoop:Disconnect(); wsLoop = nil end
+                    return
+                end
+                local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum.WalkSpeed = walkSpeedVal end
+            end)
+        end
+    else
+        if wsLoop then wsLoop:Disconnect(); wsLoop = nil end
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
     end
 end)
 
@@ -482,7 +531,7 @@ CreateToggle(MainPage, "NOCLIP", false, function(state)
     end
 end)
 
---// Aimbot Page (all toggles use CreateToggle, so they turn green)
+--// Aimbot Page (all toggles use CreateToggle, no green)
 local function createAimbotUI()
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1,0,0,30)
@@ -493,14 +542,13 @@ local function createAimbotUI()
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.Parent = AimbotPage
 
-    -- Toggle ON/OFF
     local aimbotEnabled = false
     local currentTarget = nil
     local lastKey = nil
     local targetPlayers = true
     local targetNPCs = true
     local soruAimbot = false
-    local excludeF = true   -- true means F excluded (default ON)
+    local excludeF = true
     local showLine = true
     local showFOV = false
     local maxDistance = 3000
@@ -512,24 +560,21 @@ local function createAimbotUI()
         updateTargetLabel()
     end)
 
-    -- Players toggle
     CreateToggle(AimbotPage, "TARGET PLAYERS", true, function(state)
         targetPlayers = state
     end)
 
-    -- NPCs toggle
     CreateToggle(AimbotPage, "TARGET NPCS", true, function(state)
         targetNPCs = state
     end)
 
-    -- Soru teleport
-    CreateToggle(AimbotPage, "SORU TELEPORT", false, function(state)
+    -- Soru teleport toggle
+    local soruToggle = CreateToggle(AimbotPage, "SORU TELEPORT", false, function(state)
         soruAimbot = state
     end)
 
-    -- F exclusion (default ON = excluded)
     CreateToggle(AimbotPage, "F SKILL (EXCLUDED)", true, function(state)
-        excludeF = state  -- true = excluded
+        excludeF = state
     end)
 
     -- Distance slider
@@ -595,13 +640,11 @@ local function createAimbotUI()
         distLabel.Text = "Distance: " .. maxDistance
     end)
 
-    -- Line toggle
     CreateToggle(AimbotPage, "TARGET LINE", true, function(state)
         showLine = state
         if TargetLine then TargetLine.Visible = (aimbotEnabled and showLine) end
     end)
 
-    -- FOV circle (only if Drawing available)
     if hasDrawing then
         CreateToggle(AimbotPage, "FOV CIRCLE", false, function(state)
             showFOV = state
@@ -609,7 +652,6 @@ local function createAimbotUI()
         end)
     end
 
-    -- Target status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Size = UDim2.new(1,0,0,20)
     statusLabel.Position = UDim2.new(0,0,1,-20)
@@ -621,7 +663,6 @@ local function createAimbotUI()
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = AimbotPage
 
-    -- Return controls
     return {
         status = statusLabel,
         getTarget = function() return currentTarget end,
@@ -980,7 +1021,7 @@ if mt2 then
     setreadonly(mt2, true)
 end
 
--- Soru Teleport
+-- Soru Teleport (fixed: only when enabled)
 function doSoruTeleport()
     if not aimbotUI.getEnabled() or not aimbotUI.getSoru() then return end
     local target = aimbotUI.getTarget()
@@ -1016,8 +1057,7 @@ end
 if player.Character then onCharacterAdded(player.Character) end
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- No F5 hotkey required anymore; keep it optional but not displayed.
--- We still keep the hotkey for convenience (but not mentioned in UI)
+-- Hotkey F5 (optional)
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F5 then
@@ -1026,7 +1066,8 @@ UserInputService.InputBegan:Connect(function(input, gp)
         for _, child in ipairs(AimbotPage:GetChildren()) do
             if child:IsA("TextButton") and string.sub(child.Text,1,6) == "AIMBOT" then
                 child.Text = newState and "AIMBOT ON" or "AIMBOT OFF"
-                child.BackgroundColor3 = newState and GREEN or LIGHT
+                child.BackgroundColor3 = newState and WHITE or LIGHT
+                child.TextColor3 = newState and BLACK or WHITE
                 break
             end
         end
@@ -1123,30 +1164,111 @@ end)
 CreateButton(PlayersPage, "Player List (Coming Soon)", LIGHT)
 CreateButton(PlayersPage, "Refresh Players", LIGHT)
 
---// Settings Page
+--// Settings Page with FULL theme toggle
 local themeBlack = true
+-- Store references to all UI elements that need theme update
+local themeElements = {
+    Main = Main,
+    Top = Top,
+    Content = Content,
+    Sidebar = Sidebar,
+    Title = Title,
+    Sub = Sub,
+    Toggle = Toggle,
+    ToggleStroke = ToggleStroke,
+    MainStroke = MainStroke,
+    Close = Close,
+    -- we'll also update sidebar tabs and all buttons via a loop
+}
+
+local function applyTheme(dark)
+    themeBlack = dark
+    local bg, text, stroke, subColor
+    if dark then
+        bg = BLACK
+        topBg = DARK
+        contentBg = DARK
+        text = WHITE
+        subColor = GRAY
+        stroke = Color3.fromRGB(55,55,55)
+        toggleBg = BLACK
+        toggleText = WHITE
+        toggleStroke = WHITE
+    else
+        bg = WHITE
+        topBg = Color3.fromRGB(230,230,230)
+        contentBg = Color3.fromRGB(230,230,230)
+        text = BLACK
+        subColor = Color3.fromRGB(80,80,80)
+        stroke = Color3.fromRGB(200,200,200)
+        toggleBg = WHITE
+        toggleText = BLACK
+        toggleStroke = BLACK
+    end
+    Main.BackgroundColor3 = bg
+    Top.BackgroundColor3 = topBg
+    Content.BackgroundColor3 = contentBg
+    Sidebar.BackgroundColor3 = contentBg
+    Title.TextColor3 = text
+    Sub.TextColor3 = subColor
+    MainStroke.Color = stroke
+    Toggle.BackgroundColor3 = toggleBg
+    Toggle.TextColor3 = toggleText
+    ToggleStroke.Color = toggleStroke
+    -- Update all buttons inside Sidebar and Content
+    for _, obj in ipairs(Sidebar:GetDescendants()) do
+        if obj:IsA("TextButton") then
+            if obj.BackgroundColor3 == LIGHT or obj.BackgroundColor3 == WHITE then
+                -- Determine if it's a tab button or a normal button
+                -- We'll keep the active tab white, others light
+                -- We'll just set default background based on theme
+                if obj.BackgroundColor3 == WHITE then
+                    obj.BackgroundColor3 = dark and WHITE or BLACK
+                    obj.TextColor3 = dark and BLACK or WHITE
+                else
+                    obj.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
+                    obj.TextColor3 = dark and WHITE or BLACK
+                end
+            end
+        end
+    end
+    for _, obj in ipairs(Content:GetDescendants()) do
+        if obj:IsA("TextButton") then
+            if obj.BackgroundColor3 == LIGHT or obj.BackgroundColor3 == WHITE then
+                if obj.BackgroundColor3 == WHITE then
+                    obj.BackgroundColor3 = dark and WHITE or BLACK
+                    obj.TextColor3 = dark and BLACK or WHITE
+                else
+                    obj.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
+                    obj.TextColor3 = dark and WHITE or BLACK
+                end
+            end
+        end
+        if obj:IsA("TextLabel") and obj ~= Title and obj ~= Sub then
+            obj.TextColor3 = dark and WHITE or BLACK
+        end
+    end
+    -- Update close button
+    Close.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
+    Close.TextColor3 = dark and WHITE or BLACK
+end
+
 CreateToggle(SettingsPage, "DARK THEME", true, function(state)
-    themeBlack = state
-    Main.BackgroundColor3 = themeBlack and BLACK or WHITE
-    Top.BackgroundColor3 = themeBlack and DARK or Color3.fromRGB(230,230,230)
-    Content.BackgroundColor3 = themeBlack and DARK or Color3.fromRGB(230,230,230)
-    Sidebar.BackgroundColor3 = themeBlack and DARK or Color3.fromRGB(230,230,230)
-    Title.TextColor3 = themeBlack and WHITE or BLACK
-    Sub.TextColor3 = themeBlack and GRAY or Color3.fromRGB(80,80,80)
-    ToggleStroke.Color = themeBlack and WHITE or BLACK
-    Toggle.BackgroundColor3 = themeBlack and BLACK or WHITE
-    Toggle.TextColor3 = themeBlack and WHITE or BLACK
+    applyTheme(state)
 end)
+
+-- Apply initial theme
+applyTheme(true)
 
 CreateButton(SettingsPage, "Save Config (Placeholder)", LIGHT)
 CreateButton(SettingsPage, "Load Config (Placeholder)", LIGHT)
 
---// Info Page
+--// Info Page (updated credits)
 local infoText = Instance.new("TextLabel")
 infoText.Size = UDim2.new(1,0,0,140)
 infoText.Position = UDim2.new(0,0,0,10)
 infoText.BackgroundTransparency = 1
-infoText.Text = "Ivory Hub v1.0\n\nCreated by: lvory999\n\nIdeas & name: rayo06996\n\nA clean, simple hub for Blox Fruits.\n\nFeatures: Aimbot, ESP, Walk Speed, Noclip, and more."
+infoText.Text = "Ivory Hub v1.0\n\nCreated by: lvory999\n\nIdeas: rayo06996\n\nA clean, simple hub for Blox Fruits.\n\nFeatures: Aimbot, ESP, Walk Speed, Noclip, Fast Attack."
 infoText.TextColor3 = WHITE
 infoText.TextSize = 11
 infoText.Font = Enum.Font.Gotham
@@ -1154,12 +1276,12 @@ infoText.TextXAlignment = Enum.TextXAlignment.Left
 infoText.TextYAlignment = Enum.TextYAlignment.Top
 infoText.Parent = InfoPage
 
---// Credits Page
+--// Credits Page (updated)
 local creditsText = Instance.new("TextLabel")
 creditsText.Size = UDim2.new(1,0,0,120)
 creditsText.Position = UDim2.new(0,0,0,10)
 creditsText.BackgroundTransparency = 1
-creditsText.Text = "Ivory Hub\n\nDesign & Development: lvory999\n\nIdeas & Name: rayo06996\n\nSpecial thanks to the community."
+creditsText.Text = "Ivory Hub\n\nDesign & Development: lvory999\n\nIdeas: rayo06996\n\nSpecial thanks to the community."
 creditsText.TextColor3 = WHITE
 creditsText.TextSize = 11
 creditsText.Font = Enum.Font.Gotham
@@ -1169,4 +1291,4 @@ creditsText.Parent = CreditsPage
 
 print("✅ Ivory Hub loaded with integrated Aimbot, ESP, and features!")
 print("📌 Toggle GUI with the 'I' button (middle-left).")
-print("📌 All toggles turn GREEN when ON.")
+print("📌 All toggles show ON/OFF with black/white indicators.")
