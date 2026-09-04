@@ -1,5 +1,6 @@
 --// IVORY HUB
 --// Black & White UI with Integrated Aimbot & Features
+--// Credits: lvory999 (Developer), rayo06996 (Ideas & Name)
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -262,7 +263,7 @@ HomeTab.TextColor3 = BLACK
 local Toggle = Instance.new("TextButton")
 Toggle.Name = "IvoryToggle"
 Toggle.Size = UDim2.fromOffset(44,44)
-Toggle.Position = UDim2.new(0,15,0.5,-22)  -- middle-left
+Toggle.Position = UDim2.new(0,15,0.5,-22)
 Toggle.BackgroundColor3 = BLACK
 Toggle.BorderSizePixel = 0
 Toggle.Text = "I"
@@ -344,7 +345,7 @@ end)
 --              FEATURES & AIMBOT INTEGRATION
 -- ==================================================================
 
---// Home Page
+--// Home Page - cleaned up (removed F5 hint and extra text)
 local HomeTitle = Instance.new("TextLabel")
 HomeTitle.Size = UDim2.new(1,0,0,40)
 HomeTitle.BackgroundTransparency = 1
@@ -364,19 +365,13 @@ HomeSub.TextSize = 11
 HomeSub.Font = Enum.Font.Gotham
 HomeSub.Parent = Home
 
-CreateButton(Home, "Press F5 to toggle Aimbot", LIGHT)
-CreateButton(Home, "All toggles turn GREEN when ON", LIGHT)
+-- (Removed the two info buttons as requested)
 
 --// Main Page (features)
 -- Fast Attack toggle
 local fastAttack = false
 CreateToggle(MainPage, "FAST ATTACK", false, function(state)
     fastAttack = state
-    -- Implement fast attack logic
-    if state then
-        -- Simulate fast M1 (just a placeholder)
-        print("Fast Attack ON")
-    end
 end)
 
 -- Walk Speed toggle & slider
@@ -487,7 +482,7 @@ CreateToggle(MainPage, "NOCLIP", false, function(state)
     end
 end)
 
---// Aimbot Page (existing content with toggles)
+--// Aimbot Page (all toggles use CreateToggle, so they turn green)
 local function createAimbotUI()
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1,0,0,30)
@@ -498,14 +493,14 @@ local function createAimbotUI()
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.Parent = AimbotPage
 
-    -- Toggle ON/OFF (using CreateToggle)
+    -- Toggle ON/OFF
     local aimbotEnabled = false
     local currentTarget = nil
     local lastKey = nil
     local targetPlayers = true
     local targetNPCs = true
     local soruAimbot = false
-    local aimbotF = false
+    local excludeF = true   -- true means F excluded (default ON)
     local showLine = true
     local showFOV = false
     local maxDistance = 3000
@@ -532,17 +527,9 @@ local function createAimbotUI()
         soruAimbot = state
     end)
 
-    -- F exclusion
+    -- F exclusion (default ON = excluded)
     CreateToggle(AimbotPage, "F SKILL (EXCLUDED)", true, function(state)
-        aimbotF = state  -- true means excluded? Actually we want: when on (green) it's excluded. We'll set aimbotF = true when excluded.
-        -- But in the code we used aimbotF as: if false, excluded. So we invert.
-        -- Let's set: aimbotF = not state (so when button says "EXCLUDED" (green) then aimbotF = true)
-        -- We'll handle in the toggle callback.
-        -- We'll redefine: when button is ON (green) it means excluded.
-        -- So we store a variable: excludeF = state
-        -- We'll use excludeF in hooks.
-        -- We'll just use a separate variable.
-        excludeF = state
+        excludeF = state  -- true = excluded
     end)
 
     -- Distance slider
@@ -634,7 +621,7 @@ local function createAimbotUI()
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = AimbotPage
 
-    -- Return controls for updating
+    -- Return controls
     return {
         status = statusLabel,
         getTarget = function() return currentTarget end,
@@ -1029,13 +1016,13 @@ end
 if player.Character then onCharacterAdded(player.Character) end
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- Global hotkey F5
+-- No F5 hotkey required anymore; keep it optional but not displayed.
+-- We still keep the hotkey for convenience (but not mentioned in UI)
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F5 then
         local newState = not aimbotUI.getEnabled()
         aimbotUI.setEnabled(newState)
-        -- Update the toggle button text/color
         for _, child in ipairs(AimbotPage:GetChildren()) do
             if child:IsA("TextButton") and string.sub(child.Text,1,6) == "AIMBOT" then
                 child.Text = newState and "AIMBOT ON" or "AIMBOT OFF"
@@ -1058,7 +1045,6 @@ local espHealth = false
 CreateToggle(VisualsPage, "ESP MASTER", false, function(state)
     espEnabled = state
     if not state then
-        -- Remove all ESP billboards
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("BillboardGui") and v.Name == "IvoryESP" then
                 v:Destroy()
@@ -1157,10 +1143,10 @@ CreateButton(SettingsPage, "Load Config (Placeholder)", LIGHT)
 
 --// Info Page
 local infoText = Instance.new("TextLabel")
-infoText.Size = UDim2.new(1,0,0,120)
+infoText.Size = UDim2.new(1,0,0,140)
 infoText.Position = UDim2.new(0,0,0,10)
 infoText.BackgroundTransparency = 1
-infoText.Text = "Ivory Hub v1.0\n\nCreated by: lvory999\n\nA clean, simple hub for Blox Fruits.\n\nFeatures: Aimbot, ESP, Walk Speed, Noclip, and more."
+infoText.Text = "Ivory Hub v1.0\n\nCreated by: lvory999\n\nIdeas & name: rayo06996\n\nA clean, simple hub for Blox Fruits.\n\nFeatures: Aimbot, ESP, Walk Speed, Noclip, and more."
 infoText.TextColor3 = WHITE
 infoText.TextSize = 11
 infoText.Font = Enum.Font.Gotham
@@ -1170,10 +1156,10 @@ infoText.Parent = InfoPage
 
 --// Credits Page
 local creditsText = Instance.new("TextLabel")
-creditsText.Size = UDim2.new(1,0,0,100)
+creditsText.Size = UDim2.new(1,0,0,120)
 creditsText.Position = UDim2.new(0,0,0,10)
 creditsText.BackgroundTransparency = 1
-creditsText.Text = "Ivory Hub\n\nDesign: lvory999\n\nAimbot & Features: lvory999\n\nSpecial thanks to the community."
+creditsText.Text = "Ivory Hub\n\nDesign & Development: lvory999\n\nIdeas & Name: rayo06996\n\nSpecial thanks to the community."
 creditsText.TextColor3 = WHITE
 creditsText.TextSize = 11
 creditsText.Font = Enum.Font.Gotham
@@ -1183,4 +1169,4 @@ creditsText.Parent = CreditsPage
 
 print("✅ Ivory Hub loaded with integrated Aimbot, ESP, and features!")
 print("📌 Toggle GUI with the 'I' button (middle-left).")
-print("📌 Press F5 to toggle Aimbot on/off.")
+print("📌 All toggles turn GREEN when ON.")
