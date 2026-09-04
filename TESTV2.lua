@@ -155,11 +155,11 @@ local function CreatePage(Name)
     return Page
 end
 
---// CREATE BUTTON (smaller height = 32)
-local function CreateButton(Parent,Text,Color)
+--// CREATE BUTTON (always gray)
+local function CreateButton(Parent,Text)
     local Button = Instance.new("TextButton")
     Button.Size = UDim2.new(1,0,0,32)
-    Button.BackgroundColor3 = Color or LIGHT
+    Button.BackgroundColor3 = LIGHT
     Button.BorderSizePixel = 0
     Button.Text = Text
     Button.TextColor3 = WHITE
@@ -182,27 +182,22 @@ local function CreateButton(Parent,Text,Color)
         TweenService:Create(
             Button,
             TweenInfo.new(.12),
-            {BackgroundColor3 = Color or LIGHT}
+            {BackgroundColor3 = LIGHT}
         ):Play()
     end)
 
     return Button
 end
 
---// CREATE TOGGLE BUTTON (no green, just black/white)
+--// CREATE TOGGLE (gray always, only text changes)
 local function CreateToggle(Parent, Text, Default, OnClick)
     local state = Default or false
-    local btn = CreateButton(Parent, Text .. (state and " ON" or " OFF"), state and WHITE or LIGHT)
-    if state then btn.TextColor3 = BLACK end
-
+    local btn = CreateButton(Parent, Text .. (state and " ON" or " OFF"))
     btn.MouseButton1Click:Connect(function()
         state = not state
         btn.Text = Text .. (state and " ON" or " OFF")
-        btn.BackgroundColor3 = state and WHITE or LIGHT
-        btn.TextColor3 = state and BLACK or WHITE
         if OnClick then OnClick(state) end
     end)
-
     return btn
 end
 
@@ -346,7 +341,7 @@ end)
 --              FEATURES & AIMBOT INTEGRATION
 -- ==================================================================
 
---// Home Page (clean)
+--// Home Page
 local HomeTitle = Instance.new("TextLabel")
 HomeTitle.Size = UDim2.new(1,0,0,40)
 HomeTitle.BackgroundTransparency = 1
@@ -366,51 +361,85 @@ HomeSub.TextSize = 11
 HomeSub.Font = Enum.Font.Gotham
 HomeSub.Parent = Home
 
---// Main Page (features with fixes)
--- Fast Attack
+--// Main Page (features)
+-- Fast Attack (FIXED)
 local fastAttack = false
 local fastAttackLoop = nil
 CreateToggle(MainPage, "FAST ATTACK", false, function(state)
     fastAttack = state
     if state then
+        -- Use a loop to rapidly send attack signals
         fastAttackLoop = RunService.Heartbeat:Connect(function()
             if not fastAttack then
                 if fastAttackLoop then fastAttackLoop:Disconnect(); fastAttackLoop = nil end
                 return
             end
-            -- Simulate fast M1: send a dummy RegisterAttack/RegisterHit
-            local char = player.Character
-            if char then
+            pcall(function()
+                local char = player.Character
+                if not char then return end
                 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                if remotes then
-                    local regAttack = remotes:FindFirstChild("RE/RegisterAttack")
-                    local regHit = remotes:FindFirstChild("RE/RegisterHit")
-                    if regAttack and regHit then
-                        -- Find nearest enemy or just send empty
-                        local targets = {}
-                        for _, p in pairs(Players:GetPlayers()) do
-                            if p ~= player and p.Character then
-                                local hum = p.Character:FindFirstChildOfClass("Humanoid")
-                                local head = p.Character:FindFirstChild("Head")
-                                if hum and hum.Health > 0 and head then
-                                    table.insert(targets, {p.Character, head})
-                                end
+                if not remotes then return end
+                
+                -- Find RegisterAttack and RegisterHit
+                local regAttack = remotes:FindFirstChild("RE/RegisterAttack")
+                local regHit = remotes:FindFirstChild("RE/RegisterHit")
+                if not regAttack or not regHit then return end
+                
+                -- Get all valid targets (players + NPCs)
+                local myRoot = char:FindFirstChild("HumanoidRootPart")
+                if not myRoot then return end
+                local myPos = myRoot.Position
+                local targets = {}
+                local targetParts = {}
+                
+                -- Check players
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                        local head = p.Character:FindFirstChild("Head")
+                        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        if hum and hum.Health > 0 and head and hrp then
+                            local dist = (hrp.Position - myPos).Magnitude
+                            if dist <= 2500 then
+                                table.insert(targets, {p.Character, head})
+                                table.insert(targetParts, head)
                             end
-                        end
-                        if #targets > 0 then
-                            regAttack:FireServer(0)
-                            regHit:FireServer(targets[1][2], targets)
                         end
                     end
                 end
-            end
+                
+                -- Check NPCs (Enemies)
+                local enemies = workspace:FindFirstChild("Enemies")
+                if enemies then
+                    for _, npc in pairs(enemies:GetChildren()) do
+                        if npc:IsA("Model") then
+                            local hum = npc:FindFirstChildOfClass("Humanoid")
+                            local head = npc:FindFirstChild("Head")
+                            local hrp = npc:FindFirstChild("HumanoidRootPart")
+                            if hum and hum.Health > 0 and head and hrp then
+                                local dist = (hrp.Position - myPos).Magnitude
+                                if dist <= 2500 then
+                                    table.insert(targets, {npc, head})
+                                    table.insert(targetParts, head)
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                -- If targets exist, attack
+                if #targets > 0 then
+                    regAttack:FireServer(0)
+                    regHit:FireServer(targetParts[1], targets)
+                end
+            end)
         end)
     else
         if fastAttackLoop then fastAttackLoop:Disconnect(); fastAttackLoop = nil end
     end
 end)
 
--- Walk Speed toggle & slider
+-- Walk Speed (FIXED)
 local walkSpeed = false
 local walkSpeedVal = 16
 local wsLoop = nil
@@ -423,14 +452,20 @@ CreateToggle(MainPage, "WALK SPEED", false, function(state)
                     if wsLoop then wsLoop:Disconnect(); wsLoop = nil end
                     return
                 end
-                local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                if hum then hum.WalkSpeed = walkSpeedVal end
+                pcall(function()
+                    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.WalkSpeed ~= walkSpeedVal then
+                        hum.WalkSpeed = walkSpeedVal
+                    end
+                end)
             end)
         end
     else
         if wsLoop then wsLoop:Disconnect(); wsLoop = nil end
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = 16 end
+        pcall(function()
+            local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = 16 end
+        end)
     end
 end)
 
@@ -505,23 +540,24 @@ wsPlus.MouseButton1Click:Connect(function()
     end
 end)
 
--- Noclip toggle
+-- Noclip
 local noclipEnabled = false
 CreateToggle(MainPage, "NOCLIP", false, function(state)
     noclipEnabled = state
     if state then
+        if player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
         player.CharacterAdded:Connect(function(char)
+            task.wait(0.5)
             if noclipEnabled then
                 for _, part in pairs(char:GetDescendants()) do
                     if part:IsA("BasePart") then part.CanCollide = false end
                 end
             end
         end)
-        if player.Character then
-            for _, part in pairs(player.Character:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
-            end
-        end
     else
         if player.Character then
             for _, part in pairs(player.Character:GetDescendants()) do
@@ -531,7 +567,7 @@ CreateToggle(MainPage, "NOCLIP", false, function(state)
     end
 end)
 
---// Aimbot Page (all toggles use CreateToggle, no green)
+--// Aimbot Page
 local function createAimbotUI()
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1,0,0,30)
@@ -568,7 +604,6 @@ local function createAimbotUI()
         targetNPCs = state
     end)
 
-    -- Soru teleport toggle
     local soruToggle = CreateToggle(AimbotPage, "SORU TELEPORT", false, function(state)
         soruAimbot = state
     end)
@@ -694,7 +729,7 @@ local function createAimbotUI()
     }
 end
 
---// Drawing support (optional)
+--// Drawing support
 local hasDrawing = pcall(function()
     local c = Drawing.new("Circle")
     c:Remove()
@@ -886,7 +921,7 @@ if mouse then
     end
 end
 
--- Override remotes with F exclusion
+-- Override remotes
 local function overrideRemote(remote)
     if remote:IsA("RemoteEvent") then
         local oldFire = remote.FireServer
@@ -1021,7 +1056,7 @@ if mt2 then
     setreadonly(mt2, true)
 end
 
--- Soru Teleport (fixed: only when enabled)
+-- Soru Teleport (only when enabled)
 function doSoruTeleport()
     if not aimbotUI.getEnabled() or not aimbotUI.getSoru() then return end
     local target = aimbotUI.getTarget()
@@ -1057,7 +1092,7 @@ end
 if player.Character then onCharacterAdded(player.Character) end
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- Hotkey F5 (optional)
+-- Hotkey F5
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F5 then
@@ -1066,8 +1101,6 @@ UserInputService.InputBegan:Connect(function(input, gp)
         for _, child in ipairs(AimbotPage:GetChildren()) do
             if child:IsA("TextButton") and string.sub(child.Text,1,6) == "AIMBOT" then
                 child.Text = newState and "AIMBOT ON" or "AIMBOT OFF"
-                child.BackgroundColor3 = newState and WHITE or LIGHT
-                child.TextColor3 = newState and BLACK or WHITE
                 break
             end
         end
@@ -1161,109 +1194,65 @@ RunService.Heartbeat:Connect(function()
 end)
 
 --// Players Page
-CreateButton(PlayersPage, "Player List (Coming Soon)", LIGHT)
-CreateButton(PlayersPage, "Refresh Players", LIGHT)
+CreateButton(PlayersPage, "Player List (Coming Soon)")
+CreateButton(PlayersPage, "Refresh Players")
 
---// Settings Page with FULL theme toggle
+--// Settings Page
 local themeBlack = true
--- Store references to all UI elements that need theme update
-local themeElements = {
-    Main = Main,
-    Top = Top,
-    Content = Content,
-    Sidebar = Sidebar,
-    Title = Title,
-    Sub = Sub,
-    Toggle = Toggle,
-    ToggleStroke = ToggleStroke,
-    MainStroke = MainStroke,
-    Close = Close,
-    -- we'll also update sidebar tabs and all buttons via a loop
-}
 
 local function applyTheme(dark)
     themeBlack = dark
-    local bg, text, stroke, subColor
     if dark then
-        bg = BLACK
-        topBg = DARK
-        contentBg = DARK
-        text = WHITE
-        subColor = GRAY
-        stroke = Color3.fromRGB(55,55,55)
-        toggleBg = BLACK
-        toggleText = WHITE
-        toggleStroke = WHITE
+        Main.BackgroundColor3 = BLACK
+        Top.BackgroundColor3 = DARK
+        Content.BackgroundColor3 = DARK
+        Sidebar.BackgroundColor3 = DARK
+        Title.TextColor3 = WHITE
+        Sub.TextColor3 = GRAY
+        MainStroke.Color = Color3.fromRGB(55,55,55)
+        Toggle.BackgroundColor3 = BLACK
+        Toggle.TextColor3 = WHITE
+        ToggleStroke.Color = WHITE
+        Close.BackgroundColor3 = LIGHT
+        Close.TextColor3 = WHITE
     else
-        bg = WHITE
-        topBg = Color3.fromRGB(230,230,230)
-        contentBg = Color3.fromRGB(230,230,230)
-        text = BLACK
-        subColor = Color3.fromRGB(80,80,80)
-        stroke = Color3.fromRGB(200,200,200)
-        toggleBg = WHITE
-        toggleText = BLACK
-        toggleStroke = BLACK
+        Main.BackgroundColor3 = WHITE
+        Top.BackgroundColor3 = Color3.fromRGB(230,230,230)
+        Content.BackgroundColor3 = Color3.fromRGB(230,230,230)
+        Sidebar.BackgroundColor3 = Color3.fromRGB(230,230,230)
+        Title.TextColor3 = BLACK
+        Sub.TextColor3 = Color3.fromRGB(80,80,80)
+        MainStroke.Color = Color3.fromRGB(200,200,200)
+        Toggle.BackgroundColor3 = WHITE
+        Toggle.TextColor3 = BLACK
+        ToggleStroke.Color = BLACK
+        Close.BackgroundColor3 = Color3.fromRGB(220,220,220)
+        Close.TextColor3 = BLACK
     end
-    Main.BackgroundColor3 = bg
-    Top.BackgroundColor3 = topBg
-    Content.BackgroundColor3 = contentBg
-    Sidebar.BackgroundColor3 = contentBg
-    Title.TextColor3 = text
-    Sub.TextColor3 = subColor
-    MainStroke.Color = stroke
-    Toggle.BackgroundColor3 = toggleBg
-    Toggle.TextColor3 = toggleText
-    ToggleStroke.Color = toggleStroke
-    -- Update all buttons inside Sidebar and Content
-    for _, obj in ipairs(Sidebar:GetDescendants()) do
+    -- Update sidebar tabs
+    for _, obj in ipairs(Sidebar:GetChildren()) do
         if obj:IsA("TextButton") then
-            if obj.BackgroundColor3 == LIGHT or obj.BackgroundColor3 == WHITE then
-                -- Determine if it's a tab button or a normal button
-                -- We'll keep the active tab white, others light
-                -- We'll just set default background based on theme
-                if obj.BackgroundColor3 == WHITE then
-                    obj.BackgroundColor3 = dark and WHITE or BLACK
-                    obj.TextColor3 = dark and BLACK or WHITE
-                else
-                    obj.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
-                    obj.TextColor3 = dark and WHITE or BLACK
-                end
+            if obj.BackgroundColor3 == WHITE then
+                obj.BackgroundColor3 = dark and WHITE or BLACK
+                obj.TextColor3 = dark and BLACK or WHITE
+            else
+                obj.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
+                obj.TextColor3 = dark and WHITE or BLACK
             end
         end
     end
-    for _, obj in ipairs(Content:GetDescendants()) do
-        if obj:IsA("TextButton") then
-            if obj.BackgroundColor3 == LIGHT or obj.BackgroundColor3 == WHITE then
-                if obj.BackgroundColor3 == WHITE then
-                    obj.BackgroundColor3 = dark and WHITE or BLACK
-                    obj.TextColor3 = dark and BLACK or WHITE
-                else
-                    obj.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
-                    obj.TextColor3 = dark and WHITE or BLACK
-                end
-            end
-        end
-        if obj:IsA("TextLabel") and obj ~= Title and obj ~= Sub then
-            obj.TextColor3 = dark and WHITE or BLACK
-        end
-    end
-    -- Update close button
-    Close.BackgroundColor3 = dark and LIGHT or Color3.fromRGB(220,220,220)
-    Close.TextColor3 = dark and WHITE or BLACK
 end
 
 CreateToggle(SettingsPage, "DARK THEME", true, function(state)
     applyTheme(state)
 end)
 
--- Apply initial theme
 applyTheme(true)
 
-CreateButton(SettingsPage, "Save Config (Placeholder)", LIGHT)
-CreateButton(SettingsPage, "Load Config (Placeholder)", LIGHT)
+CreateButton(SettingsPage, "Save Config (Placeholder)")
+CreateButton(SettingsPage, "Load Config (Placeholder)")
 
---// Info Page (updated credits)
+--// Info Page
 local infoText = Instance.new("TextLabel")
 infoText.Size = UDim2.new(1,0,0,140)
 infoText.Position = UDim2.new(0,0,0,10)
@@ -1276,7 +1265,7 @@ infoText.TextXAlignment = Enum.TextXAlignment.Left
 infoText.TextYAlignment = Enum.TextYAlignment.Top
 infoText.Parent = InfoPage
 
---// Credits Page (updated)
+--// Credits Page
 local creditsText = Instance.new("TextLabel")
 creditsText.Size = UDim2.new(1,0,0,120)
 creditsText.Position = UDim2.new(0,0,0,10)
@@ -1291,4 +1280,4 @@ creditsText.Parent = CreditsPage
 
 print("✅ Ivory Hub loaded with integrated Aimbot, ESP, and features!")
 print("📌 Toggle GUI with the 'I' button (middle-left).")
-print("📌 All toggles show ON/OFF with black/white indicators.")
+print("📌 All toggles show ON/OFF text, buttons stay gray.")
