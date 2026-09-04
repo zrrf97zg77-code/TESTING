@@ -275,8 +275,61 @@ local ToggleStroke = Instance.new("UIStroke",Toggle)
 ToggleStroke.Color = WHITE
 ToggleStroke.Thickness = 1
 
+--// SORU AIMBOT MANUAL BUTTON (small draggable)
+local SoruButton = Instance.new("TextButton")
+SoruButton.Name = "SoruAimbotButton"
+SoruButton.Size = UDim2.fromOffset(80,32)
+SoruButton.Position = UDim2.new(0.5,-40,0.7,0)
+SoruButton.BackgroundColor3 = BLACK
+SoruButton.BorderSizePixel = 0
+SoruButton.Text = "SORU"
+SoruButton.TextColor3 = WHITE
+SoruButton.TextSize = 12
+SoruButton.Font = Enum.Font.GothamBold
+SoruButton.AutoButtonColor = false
+SoruButton.Parent = Gui
+
+Instance.new("UICorner",SoruButton).CornerRadius = UDim.new(0,8)
+
+local SoruStroke = Instance.new("UIStroke",SoruButton)
+SoruStroke.Color = WHITE
+SoruStroke.Thickness = 1
+
+-- Make it draggable
+MakeDraggable(SoruButton)
+
+-- Soru button click: do teleport if aimbot enabled and target exists
+SoruButton.MouseButton1Click:Connect(function()
+    if aimbotUI and aimbotUI.getEnabled() then
+        local target = aimbotUI.getTarget()
+        if target then
+            doSoruTeleportManual(target)
+        end
+    end
+end)
+
+-- Manual teleport function (bypasses toggle)
+function doSoruTeleportManual(target)
+    if not target then return end
+    local targetPos = target.Position
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    hrp.CFrame = CFrame.new(targetPos)
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if remotes then
+        local commF = remotes:FindFirstChild("CommF_")
+        if commF then
+            pcall(function()
+                commF:InvokeServer("Flashstep", targetPos)
+            end)
+        end
+    end
+end
+
 --// DRAG FUNCTION
-local function MakeDraggable(Object)
+function MakeDraggable(Object)
     local Dragging = false
     local DragStart
     local StartPosition
@@ -362,13 +415,12 @@ HomeSub.Font = Enum.Font.Gotham
 HomeSub.Parent = Home
 
 --// Main Page (features)
--- Fast Attack (FIXED)
+-- Fast Attack
 local fastAttack = false
 local fastAttackLoop = nil
 CreateToggle(MainPage, "FAST ATTACK", false, function(state)
     fastAttack = state
     if state then
-        -- Use a loop to rapidly send attack signals
         fastAttackLoop = RunService.Heartbeat:Connect(function()
             if not fastAttack then
                 if fastAttackLoop then fastAttackLoop:Disconnect(); fastAttackLoop = nil end
@@ -379,20 +431,14 @@ CreateToggle(MainPage, "FAST ATTACK", false, function(state)
                 if not char then return end
                 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
                 if not remotes then return end
-                
-                -- Find RegisterAttack and RegisterHit
                 local regAttack = remotes:FindFirstChild("RE/RegisterAttack")
                 local regHit = remotes:FindFirstChild("RE/RegisterHit")
                 if not regAttack or not regHit then return end
-                
-                -- Get all valid targets (players + NPCs)
                 local myRoot = char:FindFirstChild("HumanoidRootPart")
                 if not myRoot then return end
                 local myPos = myRoot.Position
                 local targets = {}
                 local targetParts = {}
-                
-                -- Check players
                 for _, p in pairs(Players:GetPlayers()) do
                     if p ~= player and p.Character then
                         local hum = p.Character:FindFirstChildOfClass("Humanoid")
@@ -407,8 +453,6 @@ CreateToggle(MainPage, "FAST ATTACK", false, function(state)
                         end
                     end
                 end
-                
-                -- Check NPCs (Enemies)
                 local enemies = workspace:FindFirstChild("Enemies")
                 if enemies then
                     for _, npc in pairs(enemies:GetChildren()) do
@@ -426,8 +470,6 @@ CreateToggle(MainPage, "FAST ATTACK", false, function(state)
                         end
                     end
                 end
-                
-                -- If targets exist, attack
                 if #targets > 0 then
                     regAttack:FireServer(0)
                     regHit:FireServer(targetParts[1], targets)
@@ -439,7 +481,7 @@ CreateToggle(MainPage, "FAST ATTACK", false, function(state)
     end
 end)
 
--- Walk Speed (FIXED)
+-- Walk Speed
 local walkSpeed = false
 local walkSpeedVal = 16
 local wsLoop = nil
@@ -469,7 +511,7 @@ CreateToggle(MainPage, "WALK SPEED", false, function(state)
     end
 end)
 
--- Walk Speed slider frame
+-- Walk Speed slider
 local wsFrame = Instance.new("Frame")
 wsFrame.Size = UDim2.new(1,0,0,30)
 wsFrame.BackgroundTransparency = 1
@@ -583,7 +625,7 @@ local function createAimbotUI()
     local lastKey = nil
     local targetPlayers = true
     local targetNPCs = true
-    local soruAimbot = false
+    local soruAimbot = false   -- automatic teleport on flashstep
     local excludeF = true
     local showLine = true
     local showFOV = false
@@ -604,6 +646,7 @@ local function createAimbotUI()
         targetNPCs = state
     end)
 
+    -- Soru teleport toggle (automatic)
     local soruToggle = CreateToggle(AimbotPage, "SORU TELEPORT", false, function(state)
         soruAimbot = state
     end)
@@ -707,7 +750,7 @@ local function createAimbotUI()
         getExcludeF = function() return excludeF end,
         getTargetPlayers = function() return targetPlayers end,
         getTargetNPCs = function() return targetNPCs end,
-        getSoru = function() return soruAimbot end,
+        getSoru = function() return soruAimbot end,   -- automatic soru toggle
         getMaxDist = function() return maxDistance end,
         getShowLine = function() return showLine end,
         getShowFOV = function() return showFOV end,
@@ -1056,8 +1099,8 @@ if mt2 then
     setreadonly(mt2, true)
 end
 
--- Soru Teleport (only when enabled)
-function doSoruTeleport()
+-- Automatic Soru Teleport (only when toggled ON)
+function doSoruTeleportAuto()
     if not aimbotUI.getEnabled() or not aimbotUI.getSoru() then return end
     local target = aimbotUI.getTarget()
     if not target then return end
@@ -1084,7 +1127,7 @@ local function onCharacterAdded(char)
     hum.AnimationPlayed:Connect(function(track)
         local animName = track.Name
         if string.find(animName, "Flashstep") or string.find(animName, "Soru") or string.find(animName, "FlashStep") then
-            task.spawn(doSoruTeleport)
+            task.spawn(doSoruTeleportAuto)
         end
     end)
 end
@@ -1139,7 +1182,7 @@ CreateToggle(VisualsPage, "SHOW HEALTH", false, function(state)
     espHealth = state
 end)
 
--- ESP update loop
+-- ESP update
 RunService.Heartbeat:Connect(function()
     if not espEnabled then return end
     for _, p in pairs(Players:GetPlayers()) do
@@ -1215,6 +1258,9 @@ local function applyTheme(dark)
         ToggleStroke.Color = WHITE
         Close.BackgroundColor3 = LIGHT
         Close.TextColor3 = WHITE
+        SoruButton.BackgroundColor3 = BLACK
+        SoruButton.TextColor3 = WHITE
+        SoruStroke.Color = WHITE
     else
         Main.BackgroundColor3 = WHITE
         Top.BackgroundColor3 = Color3.fromRGB(230,230,230)
@@ -1228,6 +1274,9 @@ local function applyTheme(dark)
         ToggleStroke.Color = BLACK
         Close.BackgroundColor3 = Color3.fromRGB(220,220,220)
         Close.TextColor3 = BLACK
+        SoruButton.BackgroundColor3 = WHITE
+        SoruButton.TextColor3 = BLACK
+        SoruStroke.Color = BLACK
     end
     -- Update sidebar tabs
     for _, obj in ipairs(Sidebar:GetChildren()) do
@@ -1281,3 +1330,4 @@ creditsText.Parent = CreditsPage
 print("✅ Ivory Hub loaded with integrated Aimbot, ESP, and features!")
 print("📌 Toggle GUI with the 'I' button (middle-left).")
 print("📌 All toggles show ON/OFF text, buttons stay gray.")
+print("📌 Small draggable 'SORU' button teleports you to target on click.")
