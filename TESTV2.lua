@@ -1,5 +1,5 @@
 --// IVORY HUB
---// Black & White UI with Integrated Aimbot
+--// Black & White UI with Integrated Aimbot & Features
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -22,6 +22,7 @@ local DARK = Color3.fromRGB(17,17,17)
 local LIGHT = Color3.fromRGB(30,30,30)
 local WHITE = Color3.fromRGB(245,245,245)
 local GRAY = Color3.fromRGB(145,145,145)
+local GREEN = Color3.fromRGB(0,180,0)
 
 --// GUI
 local Gui = Instance.new("ScreenGui")
@@ -154,15 +155,15 @@ local function CreatePage(Name)
     return Page
 end
 
---// BUTTON HELPER
+--// CREATE BUTTON (smaller height = 32)
 local function CreateButton(Parent,Text,Color)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1,0,0,42)
+    Button.Size = UDim2.new(1,0,0,32)
     Button.BackgroundColor3 = Color or LIGHT
     Button.BorderSizePixel = 0
     Button.Text = Text
     Button.TextColor3 = WHITE
-    Button.TextSize = 12
+    Button.TextSize = 11
     Button.Font = Enum.Font.GothamMedium
     Button.AutoButtonColor = false
     Button.Parent = Parent
@@ -188,21 +189,35 @@ local function CreateButton(Parent,Text,Color)
     return Button
 end
 
---// CREATE TABS
+--// CREATE TOGGLE BUTTON (green when ON)
+local function CreateToggle(Parent, Text, Default, OnClick)
+    local state = Default or false
+    local btn = CreateButton(Parent, Text .. (state and " ON" or " OFF"), state and GREEN or LIGHT)
+    
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = Text .. (state and " ON" or " OFF")
+        btn.BackgroundColor3 = state and GREEN or LIGHT
+        if OnClick then OnClick(state) end
+    end)
+    
+    return btn
+end
+
+--// PAGES
 local Home = CreatePage("Home")
 local MainPage = CreatePage("Main")
-local AimbotPage = CreatePage("Aimbot")   -- NEW
-local Visuals = CreatePage("Visuals")
+local AimbotPage = CreatePage("Aimbot")
+local VisualsPage = CreatePage("Visuals")
 local PlayersPage = CreatePage("Players")
-local Teleports = CreatePage("Teleports")
-local Settings = CreatePage("Settings")
-local Info = CreatePage("Info")
-local Credits = CreatePage("Credits")
+local SettingsPage = CreatePage("Settings")
+local InfoPage = CreatePage("Info")
+local CreditsPage = CreatePage("Credits")
 
---// CREATE TAB BUTTONS
+--// TAB CREATOR
 local function CreateTab(Text,Page)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(1,-18,0,39)
+    Button.Size = UDim2.new(1,-18,0,35)
     Button.BackgroundColor3 = LIGHT
     Button.BorderSizePixel = 0
     Button.Text = Text
@@ -232,23 +247,22 @@ end
 
 local HomeTab = CreateTab("Home",Home)
 CreateTab("Main",MainPage)
-CreateTab("Aimbot",AimbotPage)  -- NEW
-CreateTab("Visuals",Visuals)
+CreateTab("Aimbot",AimbotPage)
+CreateTab("Visuals",VisualsPage)
 CreateTab("Players",PlayersPage)
-CreateTab("Teleports",Teleports)
-CreateTab("Settings",Settings)
-CreateTab("Info",Info)
-CreateTab("Credits",Credits)
+CreateTab("Settings",SettingsPage)
+CreateTab("Info",InfoPage)
+CreateTab("Credits",CreditsPage)
 
 Home.Visible = true
 HomeTab.BackgroundColor3 = WHITE
 HomeTab.TextColor3 = BLACK
 
---// SMALL TOGGLE BUTTON
+--// SMALL TOGGLE BUTTON (middle-left)
 local Toggle = Instance.new("TextButton")
 Toggle.Name = "IvoryToggle"
 Toggle.Size = UDim2.fromOffset(44,44)
-Toggle.Position = UDim2.fromOffset(15,15)
+Toggle.Position = UDim2.new(0,15,0.5,-22)  -- middle-left
 Toggle.BackgroundColor3 = BLACK
 Toggle.BorderSizePixel = 0
 Toggle.Text = "I"
@@ -327,22 +341,330 @@ Close.MouseButton1Click:Connect(function()
 end)
 
 -- ==================================================================
---                      IVORY AIMBOT INTEGRATION
+--              FEATURES & AIMBOT INTEGRATION
 -- ==================================================================
 
---// Aimbot configuration
-local aimbotEnabled = false
-local maxDistance = 3000
-local targetPartName = "HumanoidRootPart"
-local teamCheck = true
-local showLine = true
-local targetPlayers = true
-local targetNPCs = true
-local showFOV = false
-local soruAimbot = false
-local aimbotF = false   -- false = F excluded
-local currentTarget = nil
-local lastKey = nil
+--// Home Page
+local HomeTitle = Instance.new("TextLabel")
+HomeTitle.Size = UDim2.new(1,0,0,40)
+HomeTitle.BackgroundTransparency = 1
+HomeTitle.Text = "WELCOME TO IVORY HUB"
+HomeTitle.TextColor3 = WHITE
+HomeTitle.TextSize = 16
+HomeTitle.Font = Enum.Font.GothamBold
+HomeTitle.Parent = Home
+
+local HomeSub = Instance.new("TextLabel")
+HomeSub.Size = UDim2.new(1,0,0,30)
+HomeSub.Position = UDim2.new(0,0,0,45)
+HomeSub.BackgroundTransparency = 1
+HomeSub.Text = "A clean, simple hub for Blox Fruits"
+HomeSub.TextColor3 = GRAY
+HomeSub.TextSize = 11
+HomeSub.Font = Enum.Font.Gotham
+HomeSub.Parent = Home
+
+CreateButton(Home, "Press F5 to toggle Aimbot", LIGHT)
+CreateButton(Home, "All toggles turn GREEN when ON", LIGHT)
+
+--// Main Page (features)
+-- Fast Attack toggle
+local fastAttack = false
+CreateToggle(MainPage, "FAST ATTACK", false, function(state)
+    fastAttack = state
+    -- Implement fast attack logic
+    if state then
+        -- Simulate fast M1 (just a placeholder)
+        print("Fast Attack ON")
+    end
+end)
+
+-- Walk Speed toggle & slider
+local walkSpeed = false
+local walkSpeedVal = 16
+local wsToggle = CreateToggle(MainPage, "WALK SPEED", false, function(state)
+    walkSpeed = state
+    if state and player.Character then
+        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = walkSpeedVal end
+    end
+end)
+
+-- Walk Speed slider frame
+local wsFrame = Instance.new("Frame")
+wsFrame.Size = UDim2.new(1,0,0,30)
+wsFrame.BackgroundTransparency = 1
+wsFrame.Parent = MainPage
+
+local wsLabel = Instance.new("TextLabel")
+wsLabel.Size = UDim2.new(0.5,0,1,0)
+wsLabel.BackgroundTransparency = 1
+wsLabel.Text = "Speed: " .. walkSpeedVal
+wsLabel.TextColor3 = WHITE
+wsLabel.TextSize = 10
+wsLabel.Font = Enum.Font.Gotham
+wsLabel.TextXAlignment = Enum.TextXAlignment.Left
+wsLabel.Parent = wsFrame
+
+local wsMinus = Instance.new("TextButton")
+wsMinus.Size = UDim2.new(0,25,0,25)
+wsMinus.Position = UDim2.new(0.7,0,0.5,-12.5)
+wsMinus.BackgroundColor3 = LIGHT
+wsMinus.Text = "-"
+wsMinus.TextColor3 = WHITE
+wsMinus.TextSize = 12
+wsMinus.Font = Enum.Font.GothamBold
+wsMinus.AutoButtonColor = false
+wsMinus.Parent = wsFrame
+Instance.new("UICorner",wsMinus).CornerRadius = UDim.new(0,6)
+
+local wsVal = Instance.new("TextLabel")
+wsVal.Size = UDim2.new(0,30,0,25)
+wsVal.Position = UDim2.new(0.8,0,0.5,-12.5)
+wsVal.BackgroundTransparency = 1
+wsVal.Text = tostring(walkSpeedVal)
+wsVal.TextColor3 = WHITE
+wsVal.TextSize = 11
+wsVal.Font = Enum.Font.GothamBold
+wsVal.TextXAlignment = Enum.TextXAlignment.Center
+wsVal.Parent = wsFrame
+
+local wsPlus = Instance.new("TextButton")
+wsPlus.Size = UDim2.new(0,25,0,25)
+wsPlus.Position = UDim2.new(0.9,0,0.5,-12.5)
+wsPlus.BackgroundColor3 = LIGHT
+wsPlus.Text = "+"
+wsPlus.TextColor3 = WHITE
+wsPlus.TextSize = 12
+wsPlus.Font = Enum.Font.GothamBold
+wsPlus.AutoButtonColor = false
+wsPlus.Parent = wsFrame
+Instance.new("UICorner",wsPlus).CornerRadius = UDim.new(0,6)
+
+wsMinus.MouseButton1Click:Connect(function()
+    walkSpeedVal = math.max(16, walkSpeedVal - 5)
+    wsVal.Text = tostring(walkSpeedVal)
+    wsLabel.Text = "Speed: " .. walkSpeedVal
+    if walkSpeed and player.Character then
+        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = walkSpeedVal end
+    end
+end)
+
+wsPlus.MouseButton1Click:Connect(function()
+    walkSpeedVal = math.min(100, walkSpeedVal + 5)
+    wsVal.Text = tostring(walkSpeedVal)
+    wsLabel.Text = "Speed: " .. walkSpeedVal
+    if walkSpeed and player.Character then
+        local hum = player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = walkSpeedVal end
+    end
+end)
+
+-- Noclip toggle
+local noclipEnabled = false
+CreateToggle(MainPage, "NOCLIP", false, function(state)
+    noclipEnabled = state
+    if state then
+        player.CharacterAdded:Connect(function(char)
+            if noclipEnabled then
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+        if player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
+    else
+        if player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = true end
+            end
+        end
+    end
+end)
+
+--// Aimbot Page (existing content with toggles)
+local function createAimbotUI()
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1,0,0,30)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "AIMBOT SETTINGS"
+    titleLabel.TextColor3 = WHITE
+    titleLabel.TextSize = 14
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Parent = AimbotPage
+
+    -- Toggle ON/OFF (using CreateToggle)
+    local aimbotEnabled = false
+    local currentTarget = nil
+    local lastKey = nil
+    local targetPlayers = true
+    local targetNPCs = true
+    local soruAimbot = false
+    local aimbotF = false
+    local showLine = true
+    local showFOV = false
+    local maxDistance = 3000
+
+    local aimbotToggle = CreateToggle(AimbotPage, "AIMBOT", false, function(state)
+        aimbotEnabled = state
+        if FOVCircle then FOVCircle.Visible = (aimbotEnabled and showFOV) end
+        if TargetLine then TargetLine.Visible = (aimbotEnabled and showLine) end
+        updateTargetLabel()
+    end)
+
+    -- Players toggle
+    CreateToggle(AimbotPage, "TARGET PLAYERS", true, function(state)
+        targetPlayers = state
+    end)
+
+    -- NPCs toggle
+    CreateToggle(AimbotPage, "TARGET NPCS", true, function(state)
+        targetNPCs = state
+    end)
+
+    -- Soru teleport
+    CreateToggle(AimbotPage, "SORU TELEPORT", false, function(state)
+        soruAimbot = state
+    end)
+
+    -- F exclusion
+    CreateToggle(AimbotPage, "F SKILL (EXCLUDED)", true, function(state)
+        aimbotF = state  -- true means excluded? Actually we want: when on (green) it's excluded. We'll set aimbotF = true when excluded.
+        -- But in the code we used aimbotF as: if false, excluded. So we invert.
+        -- Let's set: aimbotF = not state (so when button says "EXCLUDED" (green) then aimbotF = true)
+        -- We'll handle in the toggle callback.
+        -- We'll redefine: when button is ON (green) it means excluded.
+        -- So we store a variable: excludeF = state
+        -- We'll use excludeF in hooks.
+        -- We'll just use a separate variable.
+        excludeF = state
+    end)
+
+    -- Distance slider
+    local distFrame = Instance.new("Frame")
+    distFrame.Size = UDim2.new(1,0,0,30)
+    distFrame.BackgroundTransparency = 1
+    distFrame.Parent = AimbotPage
+
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Size = UDim2.new(0.5,0,1,0)
+    distLabel.BackgroundTransparency = 1
+    distLabel.Text = "Distance: " .. maxDistance
+    distLabel.TextColor3 = WHITE
+    distLabel.TextSize = 10
+    distLabel.Font = Enum.Font.Gotham
+    distLabel.TextXAlignment = Enum.TextXAlignment.Left
+    distLabel.Parent = distFrame
+
+    local distMinus = Instance.new("TextButton")
+    distMinus.Size = UDim2.new(0,25,0,25)
+    distMinus.Position = UDim2.new(0.7,0,0.5,-12.5)
+    distMinus.BackgroundColor3 = LIGHT
+    distMinus.Text = "-"
+    distMinus.TextColor3 = WHITE
+    distMinus.TextSize = 12
+    distMinus.Font = Enum.Font.GothamBold
+    distMinus.AutoButtonColor = false
+    distMinus.Parent = distFrame
+    Instance.new("UICorner",distMinus).CornerRadius = UDim.new(0,6)
+
+    local distVal = Instance.new("TextLabel")
+    distVal.Size = UDim2.new(0,30,0,25)
+    distVal.Position = UDim2.new(0.8,0,0.5,-12.5)
+    distVal.BackgroundTransparency = 1
+    distVal.Text = tostring(maxDistance)
+    distVal.TextColor3 = WHITE
+    distVal.TextSize = 11
+    distVal.Font = Enum.Font.GothamBold
+    distVal.TextXAlignment = Enum.TextXAlignment.Center
+    distVal.Parent = distFrame
+
+    local distPlus = Instance.new("TextButton")
+    distPlus.Size = UDim2.new(0,25,0,25)
+    distPlus.Position = UDim2.new(0.9,0,0.5,-12.5)
+    distPlus.BackgroundColor3 = LIGHT
+    distPlus.Text = "+"
+    distPlus.TextColor3 = WHITE
+    distPlus.TextSize = 12
+    distPlus.Font = Enum.Font.GothamBold
+    distPlus.AutoButtonColor = false
+    distPlus.Parent = distFrame
+    Instance.new("UICorner",distPlus).CornerRadius = UDim.new(0,6)
+
+    distMinus.MouseButton1Click:Connect(function()
+        maxDistance = math.max(500, maxDistance - 100)
+        distVal.Text = tostring(maxDistance)
+        distLabel.Text = "Distance: " .. maxDistance
+    end)
+
+    distPlus.MouseButton1Click:Connect(function()
+        maxDistance = math.min(5000, maxDistance + 100)
+        distVal.Text = tostring(maxDistance)
+        distLabel.Text = "Distance: " .. maxDistance
+    end)
+
+    -- Line toggle
+    CreateToggle(AimbotPage, "TARGET LINE", true, function(state)
+        showLine = state
+        if TargetLine then TargetLine.Visible = (aimbotEnabled and showLine) end
+    end)
+
+    -- FOV circle (only if Drawing available)
+    if hasDrawing then
+        CreateToggle(AimbotPage, "FOV CIRCLE", false, function(state)
+            showFOV = state
+            if FOVCircle then FOVCircle.Visible = (aimbotEnabled and showFOV) end
+        end)
+    end
+
+    -- Target status
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1,0,0,20)
+    statusLabel.Position = UDim2.new(0,0,1,-20)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Target: None"
+    statusLabel.TextColor3 = GRAY
+    statusLabel.TextSize = 9
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.Parent = AimbotPage
+
+    -- Return controls for updating
+    return {
+        status = statusLabel,
+        getTarget = function() return currentTarget end,
+        setTarget = function(t) currentTarget = t end,
+        getEnabled = function() return aimbotEnabled end,
+        setEnabled = function(s) aimbotEnabled = s end,
+        getExcludeF = function() return excludeF end,
+        getTargetPlayers = function() return targetPlayers end,
+        getTargetNPCs = function() return targetNPCs end,
+        getSoru = function() return soruAimbot end,
+        getMaxDist = function() return maxDistance end,
+        getShowLine = function() return showLine end,
+        getShowFOV = function() return showFOV end,
+        updateStatus = function()
+            if aimbotEnabled and currentTarget then
+                local name = "Unknown"
+                local parent = currentTarget.Parent
+                if parent then
+                    local p = Players:GetPlayerFromCharacter(parent)
+                    if p then name = p.Name else name = parent.Name end
+                end
+                statusLabel.Text = "Target: " .. name
+                statusLabel.TextColor3 = Color3.fromRGB(0,255,100)
+            else
+                statusLabel.Text = "Target: None"
+                statusLabel.TextColor3 = GRAY
+            end
+        end
+    }
+end
 
 --// Drawing support (optional)
 local hasDrawing = pcall(function()
@@ -368,188 +690,14 @@ if hasDrawing then
     TargetLine.Transparency = 0.6
 end
 
---// Build Aimbot Page UI
-local function createAimbotUI()
-    -- Title label
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1,0,0,30)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "AIMBOT SETTINGS"
-    titleLabel.TextColor3 = WHITE
-    titleLabel.TextSize = 14
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.Parent = AimbotPage
-
-    -- Toggle ON/OFF
-    local toggleBtn = CreateButton(AimbotPage, "AIMBOT: OFF", LIGHT)
-    toggleBtn.BackgroundColor3 = LIGHT
-    toggleBtn.MouseButton1Click:Connect(function()
-        aimbotEnabled = not aimbotEnabled
-        toggleBtn.Text = aimbotEnabled and "AIMBOT: ON" or "AIMBOT: OFF"
-        toggleBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0,180,0) or LIGHT
-        if FOVCircle then FOVCircle.Visible = (aimbotEnabled and showFOV) end
-        if TargetLine then TargetLine.Visible = (aimbotEnabled and showLine) end
-        updateTargetLabel()
-    end)
-
-    -- Players toggle
-    local playersBtn = CreateButton(AimbotPage, "TARGET PLAYERS: ON", LIGHT)
-    playersBtn.BackgroundColor3 = Color3.fromRGB(0,180,0)
-    playersBtn.MouseButton1Click:Connect(function()
-        targetPlayers = not targetPlayers
-        playersBtn.Text = targetPlayers and "TARGET PLAYERS: ON" or "TARGET PLAYERS: OFF"
-        playersBtn.BackgroundColor3 = targetPlayers and Color3.fromRGB(0,180,0) or LIGHT
-    end)
-
-    -- NPCs toggle
-    local npcsBtn = CreateButton(AimbotPage, "TARGET NPCS: ON", LIGHT)
-    npcsBtn.BackgroundColor3 = Color3.fromRGB(0,180,0)
-    npcsBtn.MouseButton1Click:Connect(function()
-        targetNPCs = not targetNPCs
-        npcsBtn.Text = targetNPCs and "TARGET NPCS: ON" or "TARGET NPCS: OFF"
-        npcsBtn.BackgroundColor3 = targetNPCs and Color3.fromRGB(0,180,0) or LIGHT
-    end)
-
-    -- Soru Aimbot toggle
-    local soruBtn = CreateButton(AimbotPage, "SORU TELEPORT: OFF", LIGHT)
-    soruBtn.MouseButton1Click:Connect(function()
-        soruAimbot = not soruAimbot
-        soruBtn.Text = soruAimbot and "SORU TELEPORT: ON" or "SORU TELEPORT: OFF"
-        soruBtn.BackgroundColor3 = soruAimbot and Color3.fromRGB(0,180,0) or LIGHT
-    end)
-
-    -- F exclusion toggle
-    local fBtn = CreateButton(AimbotPage, "F SKILL: EXCLUDED", LIGHT)
-    fBtn.BackgroundColor3 = Color3.fromRGB(0,180,0)
-    fBtn.MouseButton1Click:Connect(function()
-        aimbotF = not aimbotF
-        fBtn.Text = aimbotF and "F SKILL: AIMED" or "F SKILL: EXCLUDED"
-        fBtn.BackgroundColor3 = aimbotF and Color3.fromRGB(0,180,0) or LIGHT
-    end)
-
-    -- Distance label & slider
-    local distFrame = Instance.new("Frame")
-    distFrame.Size = UDim2.new(1,0,0,40)
-    distFrame.BackgroundTransparency = 1
-    distFrame.Parent = AimbotPage
-
-    local distLabel = Instance.new("TextLabel")
-    distLabel.Size = UDim2.new(0.6,0,1,0)
-    distLabel.BackgroundTransparency = 1
-    distLabel.Text = "DISTANCE: " .. maxDistance
-    distLabel.TextColor3 = WHITE
-    distLabel.TextSize = 11
-    distLabel.Font = Enum.Font.GothamBold
-    distLabel.TextXAlignment = Enum.TextXAlignment.Left
-    distLabel.Parent = distFrame
-
-    local minusBtn = Instance.new("TextButton")
-    minusBtn.Size = UDim2.new(0,30,0,30)
-    minusBtn.Position = UDim2.new(0.7,0,0.5,-15)
-    minusBtn.BackgroundColor3 = LIGHT
-    minusBtn.Text = "-"
-    minusBtn.TextColor3 = WHITE
-    minusBtn.TextSize = 14
-    minusBtn.Font = Enum.Font.GothamBold
-    minusBtn.AutoButtonColor = false
-    minusBtn.Parent = distFrame
-    Instance.new("UICorner",minusBtn).CornerRadius = UDim.new(0,6)
-
-    local distVal = Instance.new("TextLabel")
-    distVal.Size = UDim2.new(0,40,0,30)
-    distVal.Position = UDim2.new(0.8,0,0.5,-15)
-    distVal.BackgroundTransparency = 1
-    distVal.Text = tostring(maxDistance)
-    distVal.TextColor3 = WHITE
-    distVal.TextSize = 12
-    distVal.Font = Enum.Font.GothamBold
-    distVal.TextXAlignment = Enum.TextXAlignment.Center
-    distVal.Parent = distFrame
-
-    local plusBtn = Instance.new("TextButton")
-    plusBtn.Size = UDim2.new(0,30,0,30)
-    plusBtn.Position = UDim2.new(0.9,0,0.5,-15)
-    plusBtn.BackgroundColor3 = LIGHT
-    plusBtn.Text = "+"
-    plusBtn.TextColor3 = WHITE
-    plusBtn.TextSize = 14
-    plusBtn.Font = Enum.Font.GothamBold
-    plusBtn.AutoButtonColor = false
-    plusBtn.Parent = distFrame
-    Instance.new("UICorner",plusBtn).CornerRadius = UDim.new(0,6)
-
-    minusBtn.MouseButton1Click:Connect(function()
-        maxDistance = math.max(500, maxDistance - 100)
-        distVal.Text = tostring(maxDistance)
-        distLabel.Text = "DISTANCE: " .. maxDistance
-    end)
-
-    plusBtn.MouseButton1Click:Connect(function()
-        maxDistance = math.min(5000, maxDistance + 100)
-        distVal.Text = tostring(maxDistance)
-        distLabel.Text = "DISTANCE: " .. maxDistance
-    end)
-
-    -- Line toggle
-    local lineBtn = CreateButton(AimbotPage, "TARGET LINE: ON", LIGHT)
-    lineBtn.BackgroundColor3 = Color3.fromRGB(0,180,0)
-    lineBtn.MouseButton1Click:Connect(function()
-        showLine = not showLine
-        lineBtn.Text = showLine and "TARGET LINE: ON" or "TARGET LINE: OFF"
-        lineBtn.BackgroundColor3 = showLine and Color3.fromRGB(0,180,0) or LIGHT
-        if TargetLine then TargetLine.Visible = (aimbotEnabled and showLine) end
-    end)
-
-    -- FOV circle toggle (only if Drawing available)
-    if hasDrawing then
-        local fovBtn = CreateButton(AimbotPage, "FOV CIRCLE: OFF", LIGHT)
-        fovBtn.MouseButton1Click:Connect(function()
-            showFOV = not showFOV
-            fovBtn.Text = showFOV and "FOV CIRCLE: ON" or "FOV CIRCLE: OFF"
-            fovBtn.BackgroundColor3 = showFOV and Color3.fromRGB(0,180,0) or LIGHT
-            if FOVCircle then FOVCircle.Visible = (aimbotEnabled and showFOV) end
-        end)
-    end
-
-    -- Target status label
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1,0,0,20)
-    statusLabel.Position = UDim2.new(0,0,1,-20)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Target: None"
-    statusLabel.TextColor3 = GRAY
-    statusLabel.TextSize = 9
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.Parent = AimbotPage
-
-    -- Return controls for updating
-    return {
-        status = statusLabel
-    }
-end
-
 local aimbotUI = createAimbotUI()
 
---// Update target label
 function updateTargetLabel()
-    if aimbotEnabled and currentTarget then
-        local name = "Unknown"
-        local parent = currentTarget.Parent
-        if parent then
-            local p = Players:GetPlayerFromCharacter(parent)
-            if p then name = p.Name else name = parent.Name end
-        end
-        aimbotUI.status.Text = "Target: " .. name
-        aimbotUI.status.TextColor3 = Color3.fromRGB(0,255,100)
-    else
-        aimbotUI.status.Text = "Target: None"
-        aimbotUI.status.TextColor3 = GRAY
-    end
+    aimbotUI.updateStatus()
 end
 
 --// Aimbot core logic
-function isIn180FOV(pos)
+local function isIn180FOV(pos)
     if not pos or not camera then return false end
     local look = camera.CFrame.LookVector
     local char = player.Character
@@ -560,7 +708,7 @@ function isIn180FOV(pos)
     return look:Dot(dir) >= 0
 end
 
-function getScreenCenterDist(pos)
+local function getScreenCenterDist(pos)
     if not pos or not camera then return math.huge end
     local sp, on = camera:WorldToViewportPoint(pos)
     if not on then return math.huge end
@@ -568,7 +716,7 @@ function getScreenCenterDist(pos)
     return (Vector2.new(sp.X, sp.Y) - center).Magnitude
 end
 
-function getClosestEnemy()
+local function getClosestEnemy()
     local char = player.Character
     if not char then return nil end
     local root = char:FindFirstChild("HumanoidRootPart")
@@ -576,17 +724,20 @@ function getClosestEnemy()
     local myPos = root.Position
 
     local best, bestScore = nil, math.huge
+    local targetPlayers = aimbotUI.getTargetPlayers()
+    local targetNPCs = aimbotUI.getTargetNPCs()
+    local maxDist = aimbotUI.getMaxDist()
 
     if targetPlayers then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= player and p.Character then
                 local hum = p.Character:FindFirstChildOfClass("Humanoid")
-                local part = p.Character:FindFirstChild(targetPartName) or p.Character:FindFirstChild("HumanoidRootPart")
+                local part = p.Character:FindFirstChild("HumanoidRootPart")
                 if hum and hum.Health > 0 and part then
-                    if teamCheck and player.Team and p.Team and player.Team == p.Team then continue end
+                    if player.Team and p.Team and player.Team == p.Team then continue end
                     local pos = part.Position
                     local dist = (pos - myPos).Magnitude
-                    if dist <= maxDistance and isIn180FOV(pos) then
+                    if dist <= maxDist and isIn180FOV(pos) then
                         local score = getScreenCenterDist(pos) + dist * 0.001
                         if score < bestScore then
                             bestScore, best = score, part
@@ -603,11 +754,11 @@ function getClosestEnemy()
             for _, npc in pairs(enemies:GetChildren()) do
                 if npc:IsA("Model") then
                     local hum = npc:FindFirstChildOfClass("Humanoid")
-                    local part = npc:FindFirstChild(targetPartName) or npc:FindFirstChild("HumanoidRootPart")
+                    local part = npc:FindFirstChild("HumanoidRootPart")
                     if hum and hum.Health > 0 and part then
                         local pos = part.Position
                         local dist = (pos - myPos).Magnitude
-                        if dist <= maxDistance and isIn180FOV(pos) then
+                        if dist <= maxDist and isIn180FOV(pos) then
                             local score = getScreenCenterDist(pos) + dist * 0.001
                             if score < bestScore then
                                 bestScore, best = score, part
@@ -622,22 +773,23 @@ function getClosestEnemy()
     return best
 end
 
---// Update target
+-- Update target
 RunService.Heartbeat:Connect(function()
-    if aimbotEnabled then
-        currentTarget = getClosestEnemy()
+    if aimbotUI.getEnabled() then
+        local target = getClosestEnemy()
+        aimbotUI.setTarget(target)
     else
-        currentTarget = nil
+        aimbotUI.setTarget(nil)
     end
     updateTargetLabel()
 end)
 
---// Visual updates
+-- Visual updates
 RunService.RenderStepped:Connect(function()
     if not camera then return end
 
     if FOVCircle then
-        if aimbotEnabled and showFOV then
+        if aimbotUI.getEnabled() and aimbotUI.getShowFOV() then
             FOVCircle.Visible = true
             local viewport = camera.ViewportSize
             FOVCircle.Position = Vector2.new(viewport.X/2, viewport.Y/2)
@@ -647,14 +799,19 @@ RunService.RenderStepped:Connect(function()
     end
 
     if TargetLine then
-        if aimbotEnabled and showLine and currentTarget then
-            local screenPos, onScreen = camera:WorldToViewportPoint(currentTarget.Position)
-            if onScreen then
-                local viewport = camera.ViewportSize
-                local center = Vector2.new(viewport.X/2, viewport.Y/2)
-                TargetLine.From = center
-                TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
-                TargetLine.Visible = true
+        if aimbotUI.getEnabled() and aimbotUI.getShowLine() then
+            local target = aimbotUI.getTarget()
+            if target then
+                local screenPos, onScreen = camera:WorldToViewportPoint(target.Position)
+                if onScreen then
+                    local viewport = camera.ViewportSize
+                    local center = Vector2.new(viewport.X/2, viewport.Y/2)
+                    TargetLine.From = center
+                    TargetLine.To = Vector2.new(screenPos.X, screenPos.Y)
+                    TargetLine.Visible = true
+                else
+                    TargetLine.Visible = false
+                end
             else
                 TargetLine.Visible = false
             end
@@ -664,7 +821,15 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// Silent Aim Hooks
+-- Silent Aim Hooks
+local lastKey = nil
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        lastKey = "F"
+    end
+end)
+
 if mouse then
     local mt = getrawmetatable(game)
     if mt then
@@ -672,14 +837,18 @@ if mouse then
         setreadonly(mt, false)
         mt.__index = newcclosure(function(self, key)
             if not checkcaller() and self == mouse and (key == "Hit" or key == "Target") then
-                if aimbotEnabled and currentTarget then
-                    if not aimbotF and lastKey == "F" then
-                        return oldIndex(self, key)
-                    end
-                    if key == "Hit" then
-                        return CFrame.new(currentTarget.Position)
-                    elseif key == "Target" then
-                        return currentTarget
+                if aimbotUI.getEnabled() then
+                    local target = aimbotUI.getTarget()
+                    if target then
+                        local excludeF = aimbotUI.getExcludeF()
+                        if excludeF and lastKey == "F" then
+                            return oldIndex(self, key)
+                        end
+                        if key == "Hit" then
+                            return CFrame.new(target.Position)
+                        elseif key == "Target" then
+                            return target
+                        end
                     end
                 end
             end
@@ -689,77 +858,85 @@ if mouse then
     end
 end
 
---// Override remotes
+-- Override remotes with F exclusion
 local function overrideRemote(remote)
     if remote:IsA("RemoteEvent") then
         local oldFire = remote.FireServer
         remote.FireServer = function(self, ...)
-            if aimbotEnabled and currentTarget then
-                local args = {...}
-                local isF = false
-                for _, arg in ipairs(args) do
-                    if typeof(arg) == "string" and string.upper(arg) == "F" then
-                        isF = true
-                        break
+            if aimbotUI.getEnabled() then
+                local target = aimbotUI.getTarget()
+                if target then
+                    local args = {...}
+                    local isF = false
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "string" and string.upper(arg) == "F" then
+                            isF = true
+                            break
+                        end
                     end
+                    local excludeF = aimbotUI.getExcludeF()
+                    if excludeF and isF then
+                        return oldFire(self, ...)
+                    end
+                    local targetPos = target.Position
+                    for i, arg in ipairs(args) do
+                        if typeof(arg) == "Vector3" then
+                            args[i] = targetPos
+                        elseif typeof(arg) == "CFrame" then
+                            args[i] = CFrame.new(targetPos)
+                        end
+                    end
+                    local name = self.Name
+                    if name == "RE/RegisterHit" or name == "RegisterHit" then
+                        local targetChar = target.Parent
+                        if targetChar then
+                            args[1] = target
+                            args[2] = { { targetChar, target } }
+                        end
+                    elseif name == "RE/RegisterAttack" or name == "RegisterAttack" then
+                        local targetChar = target.Parent
+                        if targetChar then
+                            args[2] = { { targetChar, target } }
+                        end
+                    elseif name == "RE/ShootGunEvent" or name == "ShootGunEvent" then
+                        args[1] = targetPos
+                        if target.Parent then
+                            args[2] = { target.Parent }
+                        end
+                    end
+                    return oldFire(self, unpack(args))
                 end
-                if not aimbotF and isF then
-                    return oldFire(self, ...)
-                end
-                local targetPos = currentTarget.Position
-                for i, arg in ipairs(args) do
-                    if typeof(arg) == "Vector3" then
-                        args[i] = targetPos
-                    elseif typeof(arg) == "CFrame" then
-                        args[i] = CFrame.new(targetPos)
-                    end
-                end
-                local name = self.Name
-                if name == "RE/RegisterHit" or name == "RegisterHit" then
-                    local targetChar = currentTarget.Parent
-                    if targetChar then
-                        args[1] = currentTarget
-                        args[2] = { { targetChar, currentTarget } }
-                    end
-                elseif name == "RE/RegisterAttack" or name == "RegisterAttack" then
-                    local targetChar = currentTarget.Parent
-                    if targetChar then
-                        args[2] = { { targetChar, currentTarget } }
-                    end
-                elseif name == "RE/ShootGunEvent" or name == "ShootGunEvent" then
-                    args[1] = targetPos
-                    if currentTarget.Parent then
-                        args[2] = { currentTarget.Parent }
-                    end
-                end
-                return oldFire(self, unpack(args))
             end
             return oldFire(self, ...)
         end
     elseif remote:IsA("RemoteFunction") then
         local oldInvoke = remote.InvokeServer
         remote.InvokeServer = function(self, ...)
-            if aimbotEnabled and currentTarget then
-                local args = {...}
-                local isF = false
-                for _, arg in ipairs(args) do
-                    if typeof(arg) == "string" and string.upper(arg) == "F" then
-                        isF = true
-                        break
+            if aimbotUI.getEnabled() then
+                local target = aimbotUI.getTarget()
+                if target then
+                    local args = {...}
+                    local isF = false
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "string" and string.upper(arg) == "F" then
+                            isF = true
+                            break
+                        end
                     end
-                end
-                if not aimbotF and isF then
-                    return oldInvoke(self, ...)
-                end
-                local targetPos = currentTarget.Position
-                for i, arg in ipairs(args) do
-                    if typeof(arg) == "Vector3" then
-                        args[i] = targetPos
-                    elseif typeof(arg) == "CFrame" then
-                        args[i] = CFrame.new(targetPos)
+                    local excludeF = aimbotUI.getExcludeF()
+                    if excludeF and isF then
+                        return oldInvoke(self, ...)
                     end
+                    local targetPos = target.Position
+                    for i, arg in ipairs(args) do
+                        if typeof(arg) == "Vector3" then
+                            args[i] = targetPos
+                        elseif typeof(arg) == "CFrame" then
+                            args[i] = CFrame.new(targetPos)
+                        end
+                    end
+                    return oldInvoke(self, unpack(args))
                 end
-                return oldInvoke(self, unpack(args))
             end
             return oldInvoke(self, ...)
         end
@@ -775,7 +952,7 @@ task.spawn(function()
     ReplicatedStorage.DescendantAdded:Connect(overrideRemote)
 end)
 
---// Fallback namecall
+-- Fallback namecall
 local oldNamecall
 local mt2 = getrawmetatable(game)
 if mt2 then
@@ -784,27 +961,31 @@ if mt2 then
     mt2.__namecall = newcclosure(function(self, ...)
         local method = getnamecallmethod()
         if not checkcaller() and (method == "FireServer" or method == "InvokeServer") then
-            if aimbotEnabled and currentTarget then
-                local args = {...}
-                local isF = false
-                for _, arg in ipairs(args) do
-                    if typeof(arg) == "string" and string.upper(arg) == "F" then
-                        isF = true
-                        break
+            if aimbotUI.getEnabled() then
+                local target = aimbotUI.getTarget()
+                if target then
+                    local args = {...}
+                    local isF = false
+                    for _, arg in ipairs(args) do
+                        if typeof(arg) == "string" and string.upper(arg) == "F" then
+                            isF = true
+                            break
+                        end
                     end
-                end
-                if not aimbotF and isF then
-                    return oldNamecall(self, ...)
-                end
-                local targetPos = currentTarget.Position
-                for i, arg in ipairs(args) do
-                    if typeof(arg) == "Vector3" then
-                        args[i] = targetPos
-                    elseif typeof(arg) == "CFrame" then
-                        args[i] = CFrame.new(targetPos)
+                    local excludeF = aimbotUI.getExcludeF()
+                    if excludeF and isF then
+                        return oldNamecall(self, ...)
                     end
+                    local targetPos = target.Position
+                    for i, arg in ipairs(args) do
+                        if typeof(arg) == "Vector3" then
+                            args[i] = targetPos
+                        elseif typeof(arg) == "CFrame" then
+                            args[i] = CFrame.new(targetPos)
+                        end
+                    end
+                    return oldNamecall(self, unpack(args))
                 end
-                return oldNamecall(self, unpack(args))
             end
         end
         return oldNamecall(self, ...)
@@ -812,18 +993,12 @@ if mt2 then
     setreadonly(mt2, true)
 end
 
---// Key detection for F exclusion
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        lastKey = "F"
-    end
-end)
-
---// Soru / Flashstep Aimbot
+-- Soru Teleport
 function doSoruTeleport()
-    if not soruAimbot or not aimbotEnabled or not currentTarget then return end
-    local targetPos = currentTarget.Position
+    if not aimbotUI.getEnabled() or not aimbotUI.getSoru() then return end
+    local target = aimbotUI.getTarget()
+    if not target then return end
+    local targetPos = target.Position
     local char = player.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -854,25 +1029,158 @@ end
 if player.Character then onCharacterAdded(player.Character) end
 player.CharacterAdded:Connect(onCharacterAdded)
 
---// Global hotkey F5 to toggle aimbot
+-- Global hotkey F5
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.F5 then
-        aimbotEnabled = not aimbotEnabled
-        -- Update UI toggle button (find it by searching)
+        local newState = not aimbotUI.getEnabled()
+        aimbotUI.setEnabled(newState)
+        -- Update the toggle button text/color
         for _, child in ipairs(AimbotPage:GetChildren()) do
             if child:IsA("TextButton") and string.sub(child.Text,1,6) == "AIMBOT" then
-                child.Text = aimbotEnabled and "AIMBOT: ON" or "AIMBOT: OFF"
-                child.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0,180,0) or LIGHT
+                child.Text = newState and "AIMBOT ON" or "AIMBOT OFF"
+                child.BackgroundColor3 = newState and GREEN or LIGHT
                 break
             end
         end
-        if FOVCircle then FOVCircle.Visible = (aimbotEnabled and showFOV) end
-        if TargetLine then TargetLine.Visible = (aimbotEnabled and showLine) end
+        if FOVCircle then FOVCircle.Visible = (newState and aimbotUI.getShowFOV()) end
+        if TargetLine then TargetLine.Visible = (newState and aimbotUI.getShowLine()) end
         updateTargetLabel()
     end
 end)
 
-print("✅ Ivory Hub loaded with Integrated Aimbot!")
-print("📌 Press F5 to toggle aimbot.")
-print("📌 F key excluded from aimbot by default.")
+--// Visuals Page (ESP)
+local espEnabled = false
+local espName = true
+local espDist = true
+local espHealth = false
+
+CreateToggle(VisualsPage, "ESP MASTER", false, function(state)
+    espEnabled = state
+    if not state then
+        -- Remove all ESP billboards
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BillboardGui") and v.Name == "IvoryESP" then
+                v:Destroy()
+            end
+        end
+    end
+end)
+
+CreateToggle(VisualsPage, "SHOW NAME", true, function(state)
+    espName = state
+end)
+
+CreateToggle(VisualsPage, "SHOW DISTANCE", true, function(state)
+    espDist = state
+end)
+
+CreateToggle(VisualsPage, "SHOW HEALTH", false, function(state)
+    espHealth = state
+end)
+
+-- ESP update loop
+RunService.Heartbeat:Connect(function()
+    if not espEnabled then return end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local char = p.Character
+            local head = char:FindFirstChild("Head")
+            if head then
+                local bill = head:FindFirstChild("IvoryESP")
+                if not bill then
+                    bill = Instance.new("BillboardGui")
+                    bill.Name = "IvoryESP"
+                    bill.Size = UDim2.new(0,200,0,50)
+                    bill.Adornee = head
+                    bill.AlwaysOnTop = true
+                    bill.Parent = head
+                    local label = Instance.new("TextLabel")
+                    label.Size = UDim2.new(1,0,1,0)
+                    label.BackgroundTransparency = 1
+                    label.TextColor3 = WHITE
+                    label.TextStrokeColor3 = BLACK
+                    label.TextStrokeTransparency = 0
+                    label.Font = Enum.Font.GothamBold
+                    label.TextSize = 10
+                    label.Parent = bill
+                end
+                local label = bill:FindFirstChild("TextLabel")
+                if label then
+                    local text = ""
+                    if espName then text = text .. p.Name end
+                    if espDist then
+                        local root = char:FindFirstChild("HumanoidRootPart")
+                        local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if root and myRoot then
+                            local dist = math.floor((root.Position - myRoot.Position).Magnitude)
+                            if espName then text = text .. "  " end
+                            text = text .. dist .. "m"
+                        end
+                    end
+                    if espHealth then
+                        local hum = char:FindFirstChildOfClass("Humanoid")
+                        if hum then
+                            local hp = math.floor((hum.Health / hum.MaxHealth) * 100)
+                            if espName or espDist then text = text .. "  " end
+                            text = text .. hp .. "% HP"
+                        end
+                    end
+                    label.Text = text
+                end
+            end
+        end
+    end
+end)
+
+--// Players Page
+CreateButton(PlayersPage, "Player List (Coming Soon)", LIGHT)
+CreateButton(PlayersPage, "Refresh Players", LIGHT)
+
+--// Settings Page
+local themeBlack = true
+CreateToggle(SettingsPage, "DARK THEME", true, function(state)
+    themeBlack = state
+    Main.BackgroundColor3 = themeBlack and BLACK or WHITE
+    Top.BackgroundColor3 = themeBlack and DARK or Color3.fromRGB(230,230,230)
+    Content.BackgroundColor3 = themeBlack and DARK or Color3.fromRGB(230,230,230)
+    Sidebar.BackgroundColor3 = themeBlack and DARK or Color3.fromRGB(230,230,230)
+    Title.TextColor3 = themeBlack and WHITE or BLACK
+    Sub.TextColor3 = themeBlack and GRAY or Color3.fromRGB(80,80,80)
+    ToggleStroke.Color = themeBlack and WHITE or BLACK
+    Toggle.BackgroundColor3 = themeBlack and BLACK or WHITE
+    Toggle.TextColor3 = themeBlack and WHITE or BLACK
+end)
+
+CreateButton(SettingsPage, "Save Config (Placeholder)", LIGHT)
+CreateButton(SettingsPage, "Load Config (Placeholder)", LIGHT)
+
+--// Info Page
+local infoText = Instance.new("TextLabel")
+infoText.Size = UDim2.new(1,0,0,120)
+infoText.Position = UDim2.new(0,0,0,10)
+infoText.BackgroundTransparency = 1
+infoText.Text = "Ivory Hub v1.0\n\nCreated by: lvory999\n\nA clean, simple hub for Blox Fruits.\n\nFeatures: Aimbot, ESP, Walk Speed, Noclip, and more."
+infoText.TextColor3 = WHITE
+infoText.TextSize = 11
+infoText.Font = Enum.Font.Gotham
+infoText.TextXAlignment = Enum.TextXAlignment.Left
+infoText.TextYAlignment = Enum.TextYAlignment.Top
+infoText.Parent = InfoPage
+
+--// Credits Page
+local creditsText = Instance.new("TextLabel")
+creditsText.Size = UDim2.new(1,0,0,100)
+creditsText.Position = UDim2.new(0,0,0,10)
+creditsText.BackgroundTransparency = 1
+creditsText.Text = "Ivory Hub\n\nDesign: lvory999\n\nAimbot & Features: lvory999\n\nSpecial thanks to the community."
+creditsText.TextColor3 = WHITE
+creditsText.TextSize = 11
+creditsText.Font = Enum.Font.Gotham
+creditsText.TextXAlignment = Enum.TextXAlignment.Left
+creditsText.TextYAlignment = Enum.TextYAlignment.Top
+creditsText.Parent = CreditsPage
+
+print("✅ Ivory Hub loaded with integrated Aimbot, ESP, and features!")
+print("📌 Toggle GUI with the 'I' button (middle-left).")
+print("📌 Press F5 to toggle Aimbot on/off.")
