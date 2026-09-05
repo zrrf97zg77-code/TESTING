@@ -1,5 +1,5 @@
 --// ============================================================
---// IVORY HUB – FINAL STABLE (FIXED ALL)
+--// IVORY HUB – FINAL (NO INFINITE JUMP)
 --// ============================================================
 print("Ivory Hub: starting...")
 
@@ -108,8 +108,8 @@ end)
 --//===========================================================
 local Main = Instance.new("Frame")
 Main.Name = "MainWindow"
-Main.Size = UDim2.new(0,480,0,440) -- a bit taller for Auto V4
-Main.Position = UDim2.new(0.5,-240,0.5,-220)
+Main.Size = UDim2.new(0,480,0,420) -- slightly smaller without Infinite Jump
+Main.Position = UDim2.new(0.5,-240,0.5,-210)
 Main.BackgroundColor3 = BLACK
 Main.BorderSizePixel = 0
 Main.Visible = true
@@ -919,10 +919,10 @@ local SilentAimModule = (function()
 end)()
 
 --//===========================================================
---// EXTRA FEATURES (FIXED)
+--// EXTRA FEATURES
 --//===========================================================
 
--- Soru Aimbot (teleport onto target)
+-- Soru Aimbot (teleport onto target) – intercepts F key
 local SoruEnabled = false
 local SoruCooldown = 0
 local function SoruUpdate()
@@ -934,8 +934,7 @@ local function SoruUpdate()
     if char and char:FindFirstChild("HumanoidRootPart") then
         local hrp = char.HumanoidRootPart
         local dist = (targetPos - hrp.Position).Magnitude
-        if dist > 30 then return end  -- only if close enough
-        -- Override Flashstep to teleport directly to target
+        if dist > 30 then return end
         pcall(function()
             local commF = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_")
             if commF then
@@ -948,6 +947,32 @@ local function SoruUpdate()
     end
 end
 
+-- Intercept F key press
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.F and SoruEnabled then
+        local targetPos = SilentAimModule:GetTargetPos()
+        if targetPos then
+            local char = Player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                local dist = (targetPos - hrp.Position).Magnitude
+                if dist <= 30 then
+                    pcall(function()
+                        local commF = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_")
+                        if commF then
+                            commF:InvokeServer("Flashstep", targetPos)
+                        else
+                            hrp.CFrame = CFrame.new(targetPos + Vector3.new(0,3,0))
+                        end
+                    end)
+                    return
+                end
+            end
+        end
+    end
+end)
+
 -- Auto V4
 local AutoV4Enabled = false
 local function AutoV4Update()
@@ -956,7 +981,6 @@ local function AutoV4Update()
     if not char then return end
     local raceEnergy = char:GetAttribute("RaceEnergy")
     if raceEnergy and raceEnergy >= 100 then
-        -- Use V4 awakening
         local awk = Player.Backpack:FindFirstChild("Awakening") or char:FindFirstChild("Awakening")
         if awk and awk:FindFirstChild("RemoteFunction") then
             awk.RemoteFunction:InvokeServer(true)
@@ -969,44 +993,7 @@ local function AutoV4Update()
     end
 end
 
--- Infinite Jump (hold to rise) – fixed to not interfere with attacks
-local InfiniteJump = false
-local spaceHeld = false
-local jumpHoldTime = 0
-
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.Space then
-        spaceHeld = true
-        jumpHoldTime = tick()
-    end
-end)
-UIS.InputEnded:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.Space then
-        spaceHeld = false
-    end
-end)
-
-local function InfiniteJumpUpdate()
-    if not InfiniteJump then return end
-    if not spaceHeld then return end
-    local char = Player.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    -- Only apply if we've been holding for a short moment (prevents interfering with normal jumps)
-    if tick() - jumpHoldTime < 0.1 then return end
-    -- Check if we're in the middle of an attack animation (simple check)
-    local hum = char:FindFirstChild("Humanoid")
-    if hum and hum:GetState() == Enum.HumanoidStateType.Physics then return end
-    hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
-    if hum and hum:GetState() ~= Enum.HumanoidStateType.Jumping then
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end
-
--- No Clip (fixed)
+-- No Clip
 local NoClip = false
 local function NoClipUpdate()
     local char = Player.Character
@@ -1035,7 +1022,7 @@ local function AntiAFKUpdate()
     end
 end
 
--- Walk on Water
+-- Walk on Water (surface)
 local WalkOnWater = false
 local waterPlatform = nil
 local function WalkOnWaterUpdate()
@@ -1047,7 +1034,7 @@ local function WalkOnWaterUpdate()
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-    if hrp.Position.Y < 9.5 then
+    if hrp.Position.Y < 1.5 then
         if not waterPlatform then
             waterPlatform = Instance.new("Part")
             waterPlatform.Size = Vector3.new(30, 1, 30)
@@ -1058,7 +1045,7 @@ local function WalkOnWaterUpdate()
             waterPlatform.Name = "WaterPlatform"
             waterPlatform.Parent = workspace
         end
-        waterPlatform.Position = Vector3.new(hrp.Position.X, 8, hrp.Position.Z)
+        waterPlatform.Position = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)  -- water surface
         waterPlatform.CanCollide = true
     else
         if waterPlatform then
@@ -1067,7 +1054,7 @@ local function WalkOnWaterUpdate()
     end
 end
 
--- ESP (fixed performance)
+-- ESP
 local ESPEnabled = false
 local ESPBox = false
 local ESPName = false
@@ -1227,7 +1214,7 @@ end
 local ESPUpdate = CreateESP()
 
 --//===========================================================
---// MAIN LOOP (OPTIMIZED – runs every 0.1s)
+--// MAIN LOOP (OPTIMIZED)
 --//===========================================================
 local RunningLoop = nil
 local function StartLoop()
@@ -1235,11 +1222,9 @@ local function StartLoop()
     RunningLoop = RunService.Heartbeat:Connect(function()
         SoruUpdate()
         AutoV4Update()
-        InfiniteJumpUpdate()
         NoClipUpdate()
         AntiAFKUpdate()
         WalkOnWaterUpdate()
-        -- ESP runs only if enabled, we'll update it every other heartbeat to save CPU
         if ESPEnabled then
             ESPUpdate()
         end
@@ -1249,7 +1234,7 @@ local function StopLoop()
     if RunningLoop then RunningLoop:Disconnect(); RunningLoop = nil end
 end
 local function CheckLoop()
-    if SoruEnabled or AutoV4Enabled or InfiniteJump or NoClip or AntiAFK or WalkOnWater or ESPEnabled then
+    if SoruEnabled or AutoV4Enabled or NoClip or AntiAFK or WalkOnWater or ESPEnabled then
         StartLoop()
     else
         StopLoop()
@@ -1260,12 +1245,12 @@ end
 --// BUILD UI PAGES
 --//===========================================================
 Section(MainPage, "MAIN")
-local welcomeLabel = Text(MainPage, "Ivory Hub – Stable Edition", 12, true)
+local welcomeLabel = Text(MainPage, "Ivory Hub – Final (No Infinite Jump)", 12, true)
 welcomeLabel.Size = UDim2.new(1,0,0,22)
 welcomeLabel.TextColor3 = WHITE
 welcomeLabel.TextXAlignment = Enum.TextXAlignment.Center
 
-local subLabel = Text(MainPage, "All features fixed • Lag-free", 10, false)
+local subLabel = Text(MainPage, "All other features intact", 10, false)
 subLabel.Size = UDim2.new(1,0,0,18)
 subLabel.TextColor3 = GRAY
 subLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -1348,7 +1333,7 @@ Toggle(CombatPage, "Auto V4", false, function(s)
     CheckLoop()
 end)
 
--- Blacklist page (FIXED)
+-- Blacklist page
 Section(BlacklistPage, "BLACKLIST KEYS")
 
 local function addBlacklistGroup(cat, keys)
@@ -1364,12 +1349,8 @@ addBlacklistGroup("Fruit", {"Z","X","C","V","F","TAP"})
 addBlacklistGroup("Sword", {"Z","X"})
 addBlacklistGroup("Gun", {"Z","X"})
 
--- Player page
+-- Player page (NO INFINITE JUMP)
 Section(PlayerPage, "PLAYER EXTRAS")
-Toggle(PlayerPage, "Infinite Jump (Hold)", false, function(s)
-    InfiniteJump = s
-    CheckLoop()
-end)
 Toggle(PlayerPage, "No Clip", false, function(s)
     NoClip = s
     CheckLoop()
@@ -1408,7 +1389,7 @@ Button(SettingsPage, "Show Notification", function()
     local T = Text(Notification,"IVORY HUB",13,true)
     T.Position = UDim2.new(0,12,0,6)
     T.Size = UDim2.new(1,-20,0,18)
-    local M = Text(Notification,"Stable version – all features fixed!",10,false)
+    local M = Text(Notification,"Final version – no Infinite Jump",10,false)
     M.TextColor3 = GRAY
     M.Position = UDim2.new(0,12,0,28)
     M.Size = UDim2.new(1,-20,0,16)
@@ -1435,7 +1416,6 @@ Button(SettingsPage, "Reset All Toggles", function()
     SilentAimModule:SetShowFOVCircle(false)
     SoruEnabled = false
     AutoV4Enabled = false
-    InfiniteJump = false
     NoClip = false
     AntiAFK = false
     WalkOnWater = false
@@ -1462,7 +1442,7 @@ end)
 
 Button(SettingsPage, "Print Info", function()
     print("================================")
-    print("IVORY HUB - Stable Edition")
+    print("IVORY HUB - Final (No Infinite Jump)")
     print("Features: Silent Aim, FOV, Soru (fixed), Auto V4, Walk Water, ESP")
     print("Creators: Ivory & Rayo")
     print("Discord: Ivory999 / rayo06996")
@@ -1505,7 +1485,7 @@ Discord2.TextColor3 = GRAY
 Discord2.Position = UDim2.new(0,12,0,34)
 Discord2.Size = UDim2.new(1,-24,0,16)
 
-local Version = Text(CreditsPage,"Ivory Hub v3.0 • Stable",9,false)
+local Version = Text(CreditsPage,"Ivory Hub v3.2 • Final",9,false)
 Version.TextColor3 = GRAY
 Version.Size = UDim2.new(1,0,0,18)
 
@@ -1585,7 +1565,7 @@ Minimize.MouseButton1Click:Connect(function()
         Tween(Main,.25,{Size = UDim2.new(0,480,0,48)})
         Minimize.Text = "+"
     else
-        Tween(Main,.25,{Size = UDim2.new(0,480,0,440)})
+        Tween(Main,.25,{Size = UDim2.new(0,480,0,420)})
         task.wait(.15)
         Sidebar.Visible = true; Content.Visible = true
         Minimize.Text = "—"
@@ -1610,8 +1590,8 @@ end)
 --//===========================================================
 CheckLoop()
 print("================================")
-print("        IVORY HUB LOADED (Stable)")
+print("        IVORY HUB LOADED (Final)")
 print("================================")
-print("Features: Silent Aim (FOV fixed), Soru (fixed), Auto V4, Walk Water, ESP")
+print("Features: Silent Aim (FOV fixed), Soru (teleport to target), Auto V4, Walk on Water, ESP")
 print("Creators: Ivory & Rayo")
 print("================================")
